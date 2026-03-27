@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Store Dashboard · State & Liberty</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f1f3f6; --surface:#fff;
+  --border:#e0e4ea; --border2:#d1d5db;
+  --text:#111827; --text2:#374151; --text3:#6b7280; --text4:#9ca3af;
+  --accent:#1a56db; --accent-bg:#eff6ff;
+  --green:#166534; --green-bg:#dcfce7; --green-bd:#86efac;
+  --red:#991b1b;   --red-bg:#fee2e2;   --red-bd:#fca5a5;
+  --amber:#92400e; --amber-bg:#fef3c7; --amber-bd:#fde68a;
+  --blue:#1e40af;  --blue-bg:#dbeafe;  --blue-bd:#93c5fd;
+  --teal:#0f766e;
+  --oh-zero:#fff5f5; --oh-pos:#f0fdf4;
+  --gs:#eff6ff; --gs-bd:#93c5fd; --gs-txt:#1e40af;
+  --gw:#f0fdf4; --gw-bd:#86efac; --gw-txt:#166534;
+  --gsa:#faf5ff;--gsa-bd:#d8b4fe;--gsa-txt:#6b21a8;
+  --gp:#fffbeb; --gp-bd:#fde68a; --gp-txt:#92400e;
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;display:flex;flex-direction:column}
+
+/* Nav */
+nav{background:#111827;height:66px;display:flex;align-items:center;padding:0 24px;gap:16px;flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.brand{font-size:16px;font-weight:700;letter-spacing:-.4px;white-space:nowrap;color:#fff}
+.brand span{color:#60a5fa}
+.vr{width:1px;height:30px;background:rgba(255,255,255,.15);flex-shrink:0}
+.nav-lbl{font-size:11px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+select{border:2px solid rgba(255,255,255,.18);background:rgba(255,255,255,.07);color:#fff;padding:9px 38px 9px 14px;border-radius:8px;font-family:'Inter',sans-serif;font-size:14px;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%23ffffff' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+select:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.25)}
+select:disabled{opacity:.4;cursor:not-allowed}
+select option{background:#1f2937;color:#fff}
+#storeSelect{min-width:290px;font-weight:700;font-size:15px;letter-spacing:-.2px}
+.as-of{font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,.4);white-space:nowrap;background:rgba(255,255,255,.06);padding:5px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.1)}
+.as-of b{color:rgba(255,255,255,.8)}
+
+/* Page tabs */
+.page-tabs{display:flex;background:#1f2937;border-bottom:1px solid #374151;flex-shrink:0}
+.ptab{padding:11px 24px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:rgba(255,255,255,.45);font-family:'Inter',sans-serif;border-bottom:3px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap}
+.ptab:hover{color:rgba(255,255,255,.75)}
+.ptab.on{color:#60a5fa;border-bottom-color:#60a5fa;font-weight:600}
+
+/* Page content */
+.page{display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.page.on{display:flex}
+
+/* Toolbar */
+.toolbar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:7px 20px;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.t-lbl{font-size:11px;font-weight:600;color:var(--text4);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
+.t-vr{width:1px;height:22px;background:var(--border);flex-shrink:0}
+.mode-grp{display:flex;border:1px solid var(--border2);border-radius:7px;overflow:hidden}
+.mbtn{padding:5px 13px;font-size:12px;font-weight:500;cursor:pointer;border:none;border-right:1px solid var(--border2);background:#fff;color:var(--text3);font-family:'Inter',sans-serif;white-space:nowrap;transition:all .12s}
+.mbtn:last-child{border-right:none}
+.mbtn:hover:not(.on){background:var(--bg);color:var(--text2)}
+.mbtn.on{background:var(--accent);color:#fff;font-weight:600}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{padding:3px 10px;font-size:11.5px;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text3);transition:all .12s;font-family:'Inter',sans-serif;white-space:nowrap}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.chip.on{background:var(--accent-bg);border-color:var(--accent);color:var(--accent);font-weight:600}
+.srch{margin-left:auto;position:relative}
+.srch-ico{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text4);pointer-events:none}
+input[type=text]{border:1px solid var(--border2);background:#fff;color:var(--text);padding:5px 10px 5px 28px;border-radius:6px;font-family:'Inter',sans-serif;font-size:12.5px;outline:none;width:200px;transition:border-color .15s,box-shadow .15s}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,86,219,.1)}
+input::placeholder{color:var(--text4)}
+
+/* Stats */
+.stats{display:flex;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.sbox{padding:8px 22px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:1px}
+.sbox:last-child{border-right:none}
+.sv{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:500;line-height:1}
+.sv.blue{color:var(--accent)} .sv.red{color:#b91c1c} .sv.amber{color:#b45309}
+.sv.sm{font-size:13px;margin-top:3px}
+.sl{font-size:10px;color:var(--text4);text-transform:uppercase;letter-spacing:.7px;margin-top:2px}
+
+/* Note */
+.note{background:#eff6ff;border-bottom:1px solid #bfdbfe;padding:5px 20px;font-size:11.5px;color:var(--blue);flex-shrink:0}
+.note.hidden{display:none}
+
+/* Table */
+.tbl-wrap{flex:1;overflow:auto;min-height:0}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead{position:sticky;top:0;z-index:50}
+
+.grp-row th{padding:4px 8px;text-align:center;font-size:9.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap}
+.g0{background:#f9fafb;color:var(--text4);text-align:left}
+.gs{background:var(--gs);color:var(--gs-txt);border-left:3px solid var(--gs-bd)}
+.gw{background:var(--gw);color:var(--gw-txt);border-left:3px solid var(--gw-bd)}
+.gsa{background:var(--gsa);color:var(--gsa-txt);border-left:3px solid var(--gsa-bd)}
+.gp{background:var(--gp);color:var(--gp-txt);border-left:3px solid var(--gp-bd)}
+
+.hdr-row th{background:#f9fafb;padding:6px 8px;border-bottom:2px solid var(--border2);text-align:left;font-weight:600;font-size:11px;color:var(--text2);cursor:pointer;user-select:none;white-space:nowrap;transition:color .1s}
+.hdr-row th:hover{color:var(--accent)}
+.hdr-row th.asc::after{content:" ↑";color:var(--accent)}
+.hdr-row th.desc::after{content:" ↓";color:var(--accent)}
+.hdr-row .hs{border-left:3px solid var(--gs-bd)}
+.hdr-row .hw{border-left:3px solid var(--gw-bd)}
+.hdr-row .hsa{border-left:3px solid var(--gsa-bd)}
+.hdr-row .hp{border-left:3px solid var(--gp-bd)}
+.hdr-row th.c{text-align:center}
+
+tbody tr{border-bottom:1px solid #f0f2f5}
+tbody tr:hover td{background-color:rgba(0,0,0,.018)}
+tbody tr.divider td{border-top:2px solid var(--border2)}
+td{padding:5px 8px;vertical-align:middle;white-space:nowrap}
+.ctype{font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;max-width:90px;overflow:hidden;text-overflow:ellipsis}
+.cname{font-weight:600;max-width:280px;white-space:normal;line-height:1.35;color:var(--text)}
+.csize{font-family:'JetBrains Mono',monospace;font-size:11.5px;max-width:180px;white-space:normal;line-height:1.4;color:var(--text2)}
+.cc{font-family:'JetBrains Mono',monospace;text-align:center}
+.cmuted{color:var(--text4)}
+.oh0{background:var(--oh-zero)}
+.ohp{background:var(--oh-pos)}
+.allsz{color:var(--teal);font-size:11.5px;text-align:center}
+.ceta{color:var(--teal);font-size:11.5px;text-align:center}
+.cdays{font-family:'JetBrains Mono',monospace;font-size:11px;text-align:center}
+.overdue{color:#b91c1c} .soon{color:#c2410c} .ok{color:#166534}
+.pq{font-family:'JetBrains Mono',monospace;font-weight:700;color:#b91c1c;text-align:center}
+
+.badge{display:inline-flex;align-items:center;justify-content:center;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600;font-family:'JetBrains Mono',monospace}
+.byg{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+/* Red for No */
+.bno{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+.byb{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
+.boo{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
+.bra{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+.bst{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.bnw{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
+.bnl{background:#f0fdf4;color:#166534;border:1px solid #86efac}
+.brs{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa}
+td.bcenter{text-align:center}
+
+/* Launch tab */
+.launch-wrap{flex:1;overflow:auto;min-height:0;padding:20px}
+.launch-filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.launch-lbl{font-size:11px;font-weight:600;color:var(--text4);text-transform:uppercase;letter-spacing:.6px}
+.launch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.launch-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;transition:box-shadow .15s}
+.launch-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.lc-type{font-size:10px;font-weight:700;color:var(--text4);text-transform:uppercase;letter-spacing:.8px}
+.lc-name{font-size:13px;font-weight:600;color:var(--text);line-height:1.35}
+.lc-footer{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
+.lc-eta{font-size:12px;color:var(--teal);font-weight:500}
+
+.dl-btn{padding:5px 12px;border:1px solid var(--green-bd);border-radius:6px;background:var(--green-bg);color:var(--green);font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;white-space:nowrap}
+.dl-btn:hover{background:#bbf7d0;border-color:var(--green)}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text4)}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">State &amp; <span>Liberty</span> &mdash; Store Dashboard</div>
+  <div class="vr"></div>
+  <span class="nav-lbl">Store</span>
+  <select id="storeSelect" disabled><option>Loading…</option></select>
+  <div class="as-of">As of <b id="asOfDate">—</b></div>
+  <button class="sync-btn" id="syncBtn" onclick="loadData()" style="margin-left:auto;display:flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid rgba(255,255,255,.2);border-radius:7px;background:rgba(255,255,255,.08);font-size:12px;font-weight:600;color:rgba(255,255,255,.8);cursor:pointer;font-family:'Inter',sans-serif;white-space:nowrap;transition:all .15s">
+    <span id="syncIcon">↻</span> Refresh
+  </button>
+</nav>
+
+<!-- Page Tabs -->
+<div class="page-tabs">
+  <button class="ptab on" onclick="setPage('dashboard')">&#128203; Store Dashboard</button>
+  <button class="ptab" onclick="setPage('launch')">&#128640; New Launch / Restock</button>
+</div>
+
+<!-- DASHBOARD PAGE -->
+<div class="page on" id="page-dashboard">
+  <div class="toolbar">
+    <span class="t-lbl">View</span>
+    <div class="mode-grp" id="modeGrp"></div>
+    <div class="t-vr"></div>
+    <span class="t-lbl">Type</span>
+    <div class="chips" id="chips"></div>
+    <button class="dl-btn" onclick="downloadExcel()">&#8681; Export Excel</button>
+    <div class="srch">
+      <span class="srch-ico">&#9906;</span>
+      <input type="text" id="srch" placeholder="Search products&hellip;" oninput="render()">
+    </div>
+  </div>
+  <div class="stats">
+    <div class="sbox"><div class="sv blue" id="si">—</div><div class="sl">Items</div></div>
+    <div class="sbox"><div class="sv" id="so">—</div><div class="sl">Total On Hand</div></div>
+    <div class="sbox"><div class="sv red" id="sp">—</div><div class="sl">Total Purge Qty</div></div>
+    <div class="sbox"><div class="sv red sm" id="so2">—</div><div class="sl">One Off</div></div>
+    <div class="sbox"><div class="sv amber sm" id="sr">—</div><div class="sl">Realignment</div></div>
+  </div>
+  <div class="note hidden" id="note">&#8505;&#65039; If purge group &mdash; Onhand, Intransit, Sales, Purge Qty are sum for all sizes</div>
+  <div class="tbl-wrap" id="tbl"></div>
+</div>
+
+<!-- LAUNCH PAGE -->
+<div class="page" id="page-launch">
+  <div class="launch-wrap">
+    <div class="launch-filters">
+      <span class="launch-lbl">Filter</span>
+      <div class="chips" id="lchips"></div>
+      <div class="chips" id="ltypechips" style="margin-left:8px"></div>
+      <div class="srch" style="margin-left:auto">
+        <span class="srch-ico">&#9906;</span>
+        <input type="text" id="lsrch" placeholder="Search&hellip;" oninput="renderLaunch()">
+      </div>
+    </div>
+    <div class="launch-grid" id="launchGrid"></div>
+  </div>
+</div>
+
+<script>
+
+const SHEET_ID='1Eq5luSB6j-NNucgl-FaRNwfA35VeNHGNI-xUTVzUMdg';
+const MODES=['Purge Group','All Purge','Realignment','One Off','Purge List'];
+const EXCL=new Set(['accessory','belt','scarf','pocket square','ties']);
+
+let D=null;
+let store='Toronto State and Liberty';
+let mode='Purge Group';
+let typeF=new Set();
+let srchQ='';
+let sKey=null,sDir=1;
+let cache={};
+let launchTypeF=new Set(),launchLaunchF=new Set();
+
+// ── Fetch helpers ─────────────────────────────────────────────────
+async function fetchSheet(sheetName){
+  const url=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+  const res=await fetch(url);
+  const txt=await res.text();
+  const m=txt.match(/setResponse\(([\s\S]+?)\);?\s*$/);
+  if(!m) throw new Error('Bad response from sheet: '+sheetName);
+  const j=JSON.parse(m[1]);
+  if(j.status==='error') throw new Error('Sheet error: '+sheetName);
+  return (j.table.rows||[]).slice(1).map(row=>(row.c||[]).map(c=>c?c.v:null));
+}
+
+function setProgress(pct,lbl){
+  const b=document.getElementById('progBar');
+  const l=document.getElementById('progLbl');
+  if(b) b.style.width=pct+'%';
+  if(l) l.textContent=lbl;
+}
+
+async function loadData(){
+  const btn=document.getElementById('syncBtn');
+  const ico=document.getElementById('syncIcon');
+  btn.classList.add('busy');
+  ico.className='spin';
+
+  // Show splash
+  document.getElementById('pageTabs').style.display='none';
+  document.getElementById('toolbar').style.display='none';
+  document.getElementById('statsBar').style.display='none';
+  document.getElementById('note').classList.add('hidden');
+  document.getElementById('tbl').innerHTML=`<div class="splash">
+    <div class="splash-logo">State &amp; <span style="color:var(--accent)">Liberty</span></div>
+    <div class="prog-wrap"><div class="prog-bar" id="progBar"></div></div>
+    <div class="prog-lbl" id="progLbl">Connecting to Google Sheets…</div>
+  </div>`;
+
+  try{
+    setProgress(5,'Reading Store Dashboard…');
+    const dashRaw=await fetchSheet('Store Dashboard');
+    // B1 is the date — row index 0, col index 1
+    const asOf=dashRaw[0]&&dashRaw[0][1]?String(dashRaw[0][1]):'';
+    document.getElementById('asOfDate').textContent=asOf;
+
+    setProgress(20,'Fetching ALL SKU…');
+    const skuRaw=await fetchSheet('ALL SKU');
+
+    setProgress(42,'Fetching Inventory…');
+    const invRaw=await fetchSheet('INV');
+
+    setProgress(60,'Fetching PO On Order…');
+    const poRaw=await fetchSheet('PO On Order');
+
+    setProgress(72,'Fetching Staple Items…');
+    const stapleRaw=await fetchSheet('Staple Item');
+
+    setProgress(82,'Fetching New Launch/Restock…');
+    const launchRaw=await fetchSheet('New LaunchRestock');
+
+    setProgress(90,'Building dashboard…');
+
+    // ── Parse INV ──
+    const inv={};
+    for(const r of invRaw){
+      const sku=r[1],store=r[3],oh=Number(r[5])||0,it=Number(r[6])||0;
+      if(!sku||!store||(oh===0&&it===0)) continue;
+      if(!inv[sku]) inv[sku]={};
+      if(!inv[sku][store]) inv[sku][store]=[0,0];
+      inv[sku][store][0]+=oh; inv[sku][store][1]+=it;
+    }
+
+    // ── Parse PO ──
+    const po={};
+    for(const r of poRaw){
+      const sku=String(r[0]||''),qty=Number(r[1])||0;
+      if(!sku||!qty) continue;
+      if(!po[sku]) po[sku]=[0,null];
+      po[sku][0]+=qty;
+      if(r[2]&&!po[sku][1]){
+        if(typeof r[2]==='object') po[sku][1]=(new Date(r[2])-new Date(1899,11,30))/86400000;
+        else if(typeof r[2]==='string'&&r[2].startsWith('Date(')){
+          const p=r[2].match(/Date\((\d+),(\d+),(\d+)\)/);
+          if(p) po[sku][1]=(new Date(+p[1],+p[2],+p[3])-new Date(1899,11,30))/86400000;
+        }else po[sku][1]=Number(r[2])||null;
+      }
+    }
+
+    // ── Parse Staple ──
+    const staple=new Set(stapleRaw.map(r=>String(r[0]||'')).filter(Boolean));
+
+    // ── WH Inv (Ann Arbor > 5) ──
+    const whInv={};
+    for(const[sku,stores] of Object.entries(inv)){
+      if(stores['Ann Arbor']&&stores['Ann Arbor'][0]>5) whInv[sku]=1;
+    }
+
+    // ── Parse ALL SKU rows ──
+    // A=0,B=1,C=2,E=4,G=6,H=7,M=12,N=13,P=15,Q=16,R=17,S=18,T=19,V=21,W=22,X=23,AA=26,AB=27,AD=29,AF=31,AG=32
+    const skuRows=[];
+    for(const r of skuRaw){
+      const parent=r[0],ptype=r[1],sku=r[2],size=r[4];
+      if(!parent||!sku) continue;
+      const s=v=>v!=null?String(v):'';
+      const n=v=>v!=null&&v!==''?Math.round(Number(v)*10)/10:0;
+      skuRows.push([
+        s(parent),s(ptype),s(sku),s(size),
+        n(r[6]),n(r[7]),         // oh,it (G,H) - original store
+        s(r[12]),s(r[13]),       // whse,onord (M,N)
+        s(r[15]),s(r[16]),       // eta,days (P,Q)
+        n(r[17]),n(r[18]),       // aw,am (R,S)
+        n(r[19]),n(r[21]),n(r[22]), // l30,l60,l90 (T,V,W)
+        s(r[23]),s(r[26]),       // xReason(X), reason(AA)
+        n(r[27]),n(r[29]),       // purgeAB(AB), totalAD(AD)
+        s(r[31]),s(r[32])        // sizesOH(AF), availSz(AG)
+      ]);
+    }
+
+    // ── Parse Launch ──
+    const launchRows=[];
+    for(const r of launchRaw){
+      if(!r[1]) continue;
+      let etaStr='';
+      if(r[2]){
+        let d;
+        if(typeof r[2]==='object') d=new Date(r[2]);
+        else if(typeof r[2]==='string'&&r[2].startsWith('Date(')){
+          const p=r[2].match(/Date\((\d+),(\d+),(\d+)\)/);
+          if(p) d=new Date(+p[1],+p[2],+p[3]);
+        }
+        if(d){const day=d.getDate(),m=d.toLocaleString('en-US',{month:'long'});
+          etaStr=day<=10?'Early '+m:day<=20?'Mid '+m:'End of '+m;}
+      }
+      launchRows.push({
+        type:String(r[0]||''),name:String(r[1]||''),
+        eta:etaStr,etaLabel:String(r[3]||etaStr),
+        launchType:String(r[4]||'')
+      });
+    }
+
+    // ── Stores list ──
+    const EXCL_ST=new Set(['Auxiliary Warehouse','Custom Clothing','Outside Sales','Product Development','Quarantine','Sample Product POS','Ann Arbor']);
+    const stores=[...new Set(Object.values(inv).flatMap(m=>Object.keys(m)).filter(s=>!EXCL_ST.has(s)))].sort();
+
+    D={skuRows,inv,po,staple,whInv,stores,launchRows};
+
+    setProgress(100,'Done!');
+    await new Promise(r=>setTimeout(r,300));
+
+    // Populate store select
+    const sel=document.getElementById('storeSelect');
+    sel.innerHTML=stores.map(s=>`<option value="${s}"${s===store?' selected':''}>${s}</option>`).join('');
+    sel.disabled=false;
+    sel.addEventListener('change',()=>{store=sel.value;cache={};typeF.clear();sKey=null;render();});
+
+    // Build mode tabs
+    document.getElementById('modeGrp').innerHTML=MODES.map(m=>
+      `<button class="mbtn${m==='Purge Group'?' on':''}" data-m="${m}" onclick="setMode('${m}')">${m}</button>`
+    ).join('');
+
+    document.getElementById('pageTabs').style.display='';
+    document.getElementById('toolbar').style.display='';
+    document.getElementById('statsBar').style.display='';
+    render();
+
+  }catch(e){
+    document.getElementById('tbl').innerHTML=`<div class="splash">
+      <div class="err-box">⚠️ Could not load data from Google Sheets.<br><br>
+      Make sure the sheet is shared as <b>Anyone with the link → Viewer</b>.<br><br>
+      <small style="font-family:monospace;color:#9ca3af">${e.message}</small></div>
+    </div>`;
+  }
+  btn.classList.remove('busy');
+  ico.className='';
+  ico.textContent='↻';
+}
+
+
+const MODES=['Purge Group','All Purge','Realignment','One Off','Purge List'];
+const EXCL=new Set(['accessory','belt','scarf','pocket square','ties','t-shirt','t-shirts','vneck','v-neck','v neck','v-necks']);
+// staple accessed via D.staple directly in buildRows
+
+let store=D.currentStore;
+let mode='Purge Group';
+let typeF=new Set();
+let srchQ='';
+let sKey=null,sDir=1;
+let cache={};
+
+// ── Page switching ───────────────────────────────────────────────
+function setPage(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.toggle('on',el.id==='page-'+p));
+  document.querySelectorAll('.ptab').forEach(b=>b.classList.toggle('on',b.getAttribute('onclick').includes("'"+p+"'")));
+  if(p==='launch') renderLaunch();
+}
+
+// ── Build per-store rows ─────────────────────────────────────────
+function buildRows(st){
+  const inv=D.inv,po=D.po;
+  const oh={},it={};
+  for(const r of D.skuRows){
+    const si=inv[r[2]]&&inv[r[2]][st]?inv[r[2]][st]:[0,0];
+    oh[r[2]]=si[0];it[r[2]]=si[1];
+  }
+  // AA reason & AB purge per SKU
+  // Use pre-computed reason type from data (r[16]=AA), only recalc purge qty based on store OH
+  const rsn={},purge={};
+  for(const r of D.skuRows){
+    const sku=r[2],o=oh[sku],l60=r[13];
+    const baseRsn=r[16]; // AA col: 'Realignment','One Off','New','Staple',''
+    // Only assign reason if this store has stock
+    let rn='';
+    if(o>0 && baseRsn && baseRsn!=='New') rn=baseRsn;
+    rsn[sku]=rn;
+    // Recalculate AB purge qty based on store OH
+    let pq=0;
+    if(rn==='One Off') pq=o;
+    else if(rn==='Realignment'||rn==='Staple'){
+      // Realignment: if l60=0 and oh>=2, purge oh-1
+      if(l60===0&&o>=2) pq=o-1;
+    }
+    purge[sku]=pq;
+  }
+  // Parent AD (total purge) & X (Final Reason)
+  const ad={},xr={};
+  for(const r of D.skuRows){
+    const p=r[0],pAB=purge[r[2]],pRsn=rsn[r[2]];
+    if(pRsn==='One Off'||pRsn==='Realignment'||pRsn==='Staple'){
+      ad[p]=(ad[p]||0)+pAB;
+    }
+    if(!xr[p]&&(pRsn==='One Off'||pRsn==='Realignment')) xr[p]=pRsn;
+  }
+  // Parent size info
+  const pAll={},pOH={};
+  for(const r of D.skuRows){
+    const p=r[0],s=r[3];
+    if(!pAll[p]) pAll[p]=[];
+    if(s&&!pAll[p].includes(s)) pAll[p].push(s);
+    if(oh[r[2]]>0){if(!pOH[p]) pOH[p]=[];if(s&&!pOH[p].includes(s)) pOH[p].push(s);}
+  }
+  return D.skuRows.map(r=>{
+    const sku=r[2],p=r[0];
+    const typeLc=String(r[1]||'').toLowerCase();
+    if(EXCL.has(typeLc)) return null;
+    const o=oh[sku],i=it[sku];
+    const allS=pAll[p]||[],ohS=pOH[p]||[];
+    const szOH=ohS.length===allS.length&&allS.length>0?'All sizes available':ohS.length+'/'+allS.length;
+    const avSz=ohS.join(', ');
+    const wh=D.whInv[sku]?'Yes':'No';
+    const ord=D.po[sku]&&D.po[sku][0]>0?'Yes':'No';
+    let eta=r[8],days=r[9];
+    if(D.po[sku]&&D.po[sku][1]){
+      const d=excelDate(D.po[sku][1]);eta=fmtETA(d);
+      const dn=daysUntil(d);days=dn!==null?dn+' days':'';
+    }
+    const pAB=purge[sku];
+    const pRsn=rsn[sku];
+    const finalPurge=(pRsn==='One Off'||pRsn==='Realignment'||pRsn==='Staple')?pAB:0;
+    // Only include if Final Reason is One Off or Realignment, and has store OH > 0
+    const pRsnFinal=xr[p]||'';
+    if(pRsnFinal!=='One Off'&&pRsnFinal!=='Realignment') return null;
+    if(o===0&&i===0) return null;
+    return {parent:p,type:r[1],sku,size:r[3],oh:o,it:i,szOH,avSz,wh,ord,eta,days,
+      aw:r[10],am:r[11],l30:r[12],l60:r[13],l90:r[14],
+      xReason:pRsnFinal,reason:pRsn,purgeAB:finalPurge,totalAD:ad[p]||0};
+  }).filter(Boolean);
+}
+
+function excelDate(s){if(!s) return null;return new Date(Math.round((s-25569)*86400000));}
+function fmtETA(d){if(!d) return '';const day=d.getDate(),m=d.toLocaleString('en-US',{month:'long'});return day<=10?'Early '+m:day<=20?'Mid '+m:'End of '+m;}
+function daysUntil(d){if(!d) return null;const t=new Date();t.setHours(0,0,0,0);return Math.round((d-t)/86400000);}
+
+// ── Purge Group ──────────────────────────────────────────────────
+function buildPG(rows){
+  const g={};
+  for(const r of rows){
+    if(EXCL.has(r.type.toLowerCase())) continue;
+    if(!g[r.parent]) g[r.parent]={type:r.type,parent:r.parent,oh:0,it:0,pSz:[],allSz:[],ohSz:[],wh:'No',ord:'No',eta:r.eta,days:r.days,aw:0,am:0,l30:0,l60:0,l90:0,pq:0,reason:'',xReason:r.xReason};
+    const e=g[r.parent];
+    e.oh+=r.oh;e.it+=r.it;e.l30+=r.l30;e.l60+=r.l60;e.l90+=r.l90;e.aw+=r.aw;e.am+=r.am;
+    if(r.wh==='Yes') e.wh='Yes';if(r.ord==='Yes') e.ord='Yes';
+    e.pq+=r.purgeAB;
+    if(r.purgeAB>0&&r.size&&!e.pSz.includes(r.size)) e.pSz.push(r.size);
+    if(!e.reason&&r.reason) e.reason=r.reason;
+    if(!e.xReason&&r.xReason) e.xReason=r.xReason;
+    if(r.size&&!e.allSz.includes(r.size)) e.allSz.push(r.size);
+    if(r.oh>0&&r.size&&!e.ohSz.includes(r.size)) e.ohSz.push(r.size);
+  }
+  return Object.values(g)
+    .filter(e=>e.l90<5&&e.l30<1&&e.parent&&e.oh>0&&!EXCL.has(e.type.toLowerCase()))
+    .sort((a,b)=>a.type<b.type?-1:a.type>b.type?1:a.parent<b.parent?-1:1)
+    .map(e=>{
+      const allSz=e.allSz,ohSz=e.ohSz;
+      return {...e,pSzStr:e.pSz.join(', '),
+        szOH:ohSz.length===allSz.length&&allSz.length>0?'All sizes available':ohSz.length+'/'+allSz.length,
+        avSz:ohSz.join(', ')};
+    });
+}
+
+function filterMode(rows,m){
+  // First compute total OH per parent
+  const parentTotalOH={};
+  for(const r of rows){
+    parentTotalOH[r.parent]=(parentTotalOH[r.parent]||0)+Number(r.oh||0);
+  }
+  return rows.filter(r=>{
+    if(EXCL.has(r.type.toLowerCase())) return false;
+    if((parentTotalOH[r.parent]||0)===0) return false; // exclude if parent has no OH
+    // Already filtered to One Off / Realignment in buildRows
+    switch(m){
+      case 'All Purge':   return r.totalAD>0;
+      case 'Realignment': return r.totalAD>0&&r.xReason==='Realignment';
+      case 'One Off':     return r.totalAD>0&&r.xReason==='One Off';
+      case 'Purge List':  return r.purgeAB>0&&r.reason!=='New';
+      default: return true;
+    }
+  });
+}
+
+function getBase(){if(!cache[store]) cache[store]=buildRows(store);return cache[store];}
+
+// ── Main render ──────────────────────────────────────────────────
+function render(){
+  srchQ=document.getElementById('srch').value.toLowerCase();
+  const base=getBase();
+  const isPG=mode==='Purge Group';
+  let rows=isPG?buildPG(base):filterMode(base,mode).sort((a,b)=>a.type<b.type?-1:a.type>b.type?1:a.parent<b.parent?-1:1);
+  if(typeF.size>0) rows=rows.filter(r=>typeF.has(r.type));
+  if(srchQ) rows=rows.filter(r=>r.parent.toLowerCase().includes(srchQ)||r.type.toLowerCase().includes(srchQ)||(r.size||'').toLowerCase().includes(srchQ));
+  if(sKey) rows=[...rows].sort((a,b)=>{let av=a[sKey],bv=b[sKey];if(typeof av==='string') av=av.toLowerCase();if(typeof bv==='string') bv=bv.toLowerCase();return av<bv?-sDir:av>bv?sDir:0;});
+
+  // Stats
+  const totalOH=rows.reduce((s,r)=>s+Number(r.oh||0),0);
+  const pqKey=isPG?'pq':'purgeAB';
+  const totalPQ=rows.reduce((s,r)=>s+Number(r[pqKey]||0),0);
+  const oneOffRows=rows.filter(r=>r.xReason==='One Off');
+  const realignRows=rows.filter(r=>r.xReason==='Realignment');
+  const oneOffUnits=oneOffRows.reduce((s,r)=>s+Number(r[pqKey]||0),0);
+  const realignUnits=realignRows.reduce((s,r)=>s+Number(r[pqKey]||0),0);
+  document.getElementById('si').textContent=rows.length.toLocaleString();
+  document.getElementById('so').textContent=totalOH.toLocaleString();
+  document.getElementById('sp').textContent=Math.round(totalPQ).toLocaleString();
+  document.getElementById('so2').textContent=oneOffRows.length+' ('+Math.round(oneOffUnits)+' units)';
+  document.getElementById('sr').textContent=realignRows.length+' ('+Math.round(realignUnits)+' units)';
+  document.getElementById('note').classList.toggle('hidden',!isPG);
+
+  // Type chips
+  const all=isPG?buildPG(base):filterMode(base,mode);
+  const types=[...new Set(all.map(r=>r.type).filter(Boolean))].sort();
+  document.getElementById('chips').innerHTML=types.map(t=>
+    `<button class="chip${typeF.has(t)?' on':''}" onclick="toggleType('${t.replace(/'/g,"\\'")}')">${t}</button>`
+  ).join('');
+
+  if(!rows.length){document.getElementById('tbl').innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--text4)">No items match</div>';return;}
+
+  const sLbl=isPG?'Purge Sizes':'Size';
+  const sc=k=>{const c=sKey===k?(sDir===1?' asc':' desc'):'';return c?` class="${c.trim()}"`:''};
+
+  // Centered badge
+  function byn(v,yes='byg'){return `<td class="bcenter"><span class="badge ${v==='Yes'?yes:'bno'}">${v}</span></td>`;}
+  function brsn(v){if(!v) return '<td>—</td>';const m={'One Off':'boo','Realignment':'bra','Staple':'bst','New':'bnw'};return `<td class="bcenter"><span class="badge ${m[v]||''}">${v}</span></td>`;}
+  function nC(v){return `<td class="cc${!v?' cmuted':''}">${v||'—'}</td>`;}
+  function ohC(v){return `<td class="cc ${v?'ohp':'oh0'}">${v||'—'}</td>`;}
+  function dC(v){const n=parseInt(v);const c=isNaN(n)?'':(n<0?' overdue':n<30?' soon':' ok');return `<td class="cdays${c}">${v||'—'}</td>`;}
+
+  let h=`<table><thead>
+<tr class="grp-row">
+  <th class="g0" colspan="3"></th>
+  <th class="gs" colspan="4">Store Data</th>
+  <th class="gw" colspan="4">WH Data</th>
+  <th class="gsa" colspan="5">Sales Data</th>
+  <th class="gp" colspan="2">Purge Data</th>
+</tr>
+<tr class="hdr-row">
+  <th${sc('type')} onclick="ss('type')">Product Type</th>
+  <th${sc('parent')} onclick="ss('parent')">Parent Name</th>
+  <th${sc('size')} onclick="ss('size')">${sLbl}</th>
+  <th class="hs c"${sc('oh')} onclick="ss('oh')">Store Onhand</th>
+  <th class="hs c"${sc('it')} onclick="ss('it')">Store Intransit</th>
+  <th class="hs c"${sc('szOH')} onclick="ss('szOH')">Sizes OH</th>
+  <th class="hs c"${sc('avSz')} onclick="ss('avSz')">Available Sizes</th>
+  <th class="hw c"${sc('wh')} onclick="ss('wh')">WHSE INV</th>
+  <th class="hw c"${sc('ord')} onclick="ss('ord')">ON Order</th>
+  <th class="hw c"${sc('eta')} onclick="ss('eta')">ETA</th>
+  <th class="hw c"${sc('days')} onclick="ss('days')"># of Days to Arrive</th>
+  <th class="hsa c"${sc('aw')} onclick="ss('aw')">Avg Weekly Sales</th>
+  <th class="hsa c"${sc('am')} onclick="ss('am')">Avg Monthly Sales</th>
+  <th class="hsa c"${sc('l30')} onclick="ss('l30')">L30</th>
+  <th class="hsa c"${sc('l60')} onclick="ss('l60')">L60</th>
+  <th class="hsa c"${sc('l90')} onclick="ss('l90')">L90</th>
+  <th class="hp c"${sc(isPG?'pq':'purgeAB')} onclick="ss('${isPG?'pq':'purgeAB'}')">Purge Quantity</th>
+  <th class="hp c"${sc('reason')} onclick="ss('reason')">Reason</th>
+</tr></thead><tbody>`;
+
+  let lastParent='';
+  for(const r of rows){
+    const sStr=isPG?(r.pSzStr||'—'):(r.size||'—');
+    const pqVal=isPG?r.pq:r.purgeAB;
+    // Divider line when parent name changes
+    const isDivider=r.parent!==lastParent&&lastParent!=='';
+    lastParent=r.parent;
+    h+=`<tr${isDivider?' class="divider"':''}>
+<td class="ctype">${r.type}</td>
+<td class="cname">${r.parent}</td>
+<td class="csize">${sStr}</td>
+${ohC(r.oh)}
+${nC(r.it)}
+<td class="${r.szOH==='All sizes available'?'allsz':'cc'}">${r.szOH||'—'}</td>
+<td class="cc csize">${r.avSz||'—'}</td>
+${byn(r.wh)}
+${byn(r.ord,'byb')}
+<td class="ceta">${r.eta||'—'}</td>
+${dC(r.days)}
+${nC(r.aw)}
+${nC(r.am)}
+${nC(r.l30)}
+${nC(r.l60)}
+${nC(r.l90)}
+<td class="${pqVal>0?'pq':'cc cmuted'}">${pqVal||'—'}</td>
+${brsn(r.reason)}
+</tr>`;
+  }
+  h+='</tbody></table>';
+  document.getElementById('tbl').innerHTML=h;
+}
+
+function ss(k){sDir=sKey===k?-sDir:1;sKey=k;render();}
+function setMode(m){mode=m;document.querySelectorAll('.mbtn').forEach(b=>b.classList.toggle('on',b.dataset.m===m));sKey=null;sDir=1;render();}
+function toggleType(t){typeF.has(t)?typeF.delete(t):typeF.add(t);render();}
+
+// ── Launch tab ───────────────────────────────────────────────────
+let launchTypeF=new Set();
+let launchLaunchF=new Set();
+
+function renderLaunch(){
+  const q=document.getElementById('lsrch').value.toLowerCase();
+  let rows=D.launchRows||[];
+  if(launchLaunchF.size>0) rows=rows.filter(r=>launchLaunchF.has(r.launchType));
+  if(launchTypeF.size>0) rows=rows.filter(r=>launchTypeF.has(r.type));
+  if(q) rows=rows.filter(r=>r.name.toLowerCase().includes(q)||r.type.toLowerCase().includes(q));
+
+  // Launch type chips
+  const lTypes=[...new Set((D.launchRows||[]).map(r=>r.launchType))].sort();
+  document.getElementById('lchips').innerHTML=lTypes.map(t=>
+    `<button class="chip${launchLaunchF.has(t)?' on':''}" onclick="toggleLT('${t}')">${t}</button>`
+  ).join('');
+  const pTypes=[...new Set((D.launchRows||[]).map(r=>r.type))].sort();
+  document.getElementById('ltypechips').innerHTML=pTypes.map(t=>
+    `<button class="chip${launchTypeF.has(t)?' on':''}" onclick="toggleLPT('${t.replace(/'/g,"\\'")}')">${t}</button>`
+  ).join('');
+
+  const grid=document.getElementById('launchGrid');
+  if(!rows.length){grid.innerHTML='<div style="color:var(--text4);padding:40px">No items match</div>';return;}
+  grid.innerHTML=rows.map(r=>{
+    const badgeCls=r.launchType==='New Launch'?'bnl':'brs';
+    return `<div class="launch-card">
+      <div class="lc-type">${r.type}</div>
+      <div class="lc-name">${r.name}</div>
+      <div class="lc-footer">
+        <span class="lc-eta">📅 ${r.etaLabel||r.eta}</span>
+        <span class="badge ${badgeCls}">${r.launchType}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleLT(t){launchLaunchF.has(t)?launchLaunchF.delete(t):launchLaunchF.add(t);renderLaunch();}
+function toggleLPT(t){launchTypeF.has(t)?launchTypeF.delete(t):launchTypeF.add(t);renderLaunch();}
+
+// ── Excel Export ─────────────────────────────────────────────────
+function downloadExcel(){
+  const base=getBase();
+  const isPG=mode==='Purge Group';
+  let rows=isPG?buildPG(base):filterMode(base,mode).sort((a,b)=>a.type<b.type?-1:a.type>b.type?1:a.parent<b.parent?-1:1);
+  if(typeF.size>0) rows=rows.filter(r=>typeF.has(r.type));
+  const srchQ=document.getElementById('srch').value.toLowerCase();
+  if(srchQ) rows=rows.filter(r=>r.parent.toLowerCase().includes(srchQ)||r.type.toLowerCase().includes(srchQ));
+
+  const sLbl=isPG?'Purge Sizes':'Size';
+  const pqKey=isPG?'pq':'purgeAB';
+
+  // Build CSV then convert to Excel-compatible format
+  const headers=['Product Type','Parent Name',sLbl,'Store Onhand','Store Intransit','Sizes OH','Available Sizes','WHSE INV','ON Order','ETA','# of Days to Arrive','Avg Weekly Sales','Avg Monthly Sales','L30','L60','L90','Purge Quantity','Reason'];
+  const csvRows=[headers];
+  for(const r of rows){
+    csvRows.push([
+      r.type, r.parent,
+      isPG?(r.pSzStr||''):(r.size||''),
+      r.oh, r.it,
+      r.szOH, r.avSz,
+      r.wh, r.ord,
+      r.eta||'', r.days||'',
+      r.aw, r.am,
+      r.l30, r.l60, r.l90,
+      r[pqKey]||0,
+      r.reason||''
+    ]);
+  }
+
+  // Convert to CSV with BOM for Excel
+  const csv=csvRows.map(row=>row.map(v=>{
+    const s=String(v==null?'':v);
+    return s.includes(',')||s.includes('"')||s.includes('\n')?'"'+s.replace(/"/g,'""')+'"':s;
+  }).join(',')).join('\n');
+
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  const storeName=(document.getElementById('storeSelect').value||'Store').replace(/[^a-zA-Z0-9]/g,'_');
+  a.download='StoreDashboard_'+storeName+'_'+mode.replace(/ /g,'')+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+// Init handled by loadData()
+loadData();
+</script>
+</body>
+</html>
