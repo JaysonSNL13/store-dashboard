@@ -1,0 +1,2526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>S&L Inventory Dashboard</title>
+<style>
+:root{
+  --bg:#f4f6fb;--white:#fff;--border:#dde1ea;
+  --navy:#1a2744;--navy2:#243360;--accent:#3558b0;
+  --red:#c0392b;--green:#2e7d32;--amber:#b45309;
+  --text:#1e2533;--muted:#6b7280;
+  --cell-red:#ffe0e0;--cell-orange:#fff0d9;--cell-green:#e0f5e0;
+  --flag:#fff8e1;--flag-b:#ffc107;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:15px;height:100vh;overflow:hidden;}
+html{height:100%;}
+
+/* Loading */
+#loading{position:fixed;inset:0;background:var(--navy);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;z-index:999;gap:14px;}
+#loading h2{font-size:22px;font-weight:700;}
+.ld-bar{width:280px;height:6px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden;}
+.ld-fill{height:100%;background:#60a5fa;border-radius:3px;animation:ldp 1.4s ease-in-out infinite;}
+@keyframes ldp{0%,100%{width:15%;margin-left:0}50%{width:60%;margin-left:20%}}
+#load-msg{font-size:13px;opacity:.65;}
+#load-err{color:#f87171;font-size:13px;max-width:420px;text-align:center;line-height:1.6;display:none;}
+
+/* App */
+#app{display:none;flex-direction:column;height:100vh;}
+#app.visible{display:flex;}
+header{background:var(--navy);color:#fff;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;flex-shrink:0;}
+.h-title{font-size:18px;font-weight:700;}
+.h-sub{font-size:13px;opacity:.6;margin-top:2px;}
+.h-right{display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.h-badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:4px;padding:4px 10px;font-size:13px;color:rgba(255,255,255,.8);}
+.h-badge.ok{background:rgba(46,125,50,.3);border-color:rgba(46,125,50,.5);color:#a5d6a7;}
+.h-badge.old{background:rgba(192,57,43,.3);border-color:rgba(192,57,43,.5);color:#ef9a9a;}
+.hbtn{background:#fff;color:var(--navy);border:none;border-radius:4px;padding:7px 14px;cursor:pointer;font-size:13px;font-weight:600;}
+.hbtn:hover{background:#e8edf7;}
+.hbtn.dl{background:#2563eb;color:#fff;}
+.hbtn.dl:hover{background:#1d4ed8;}
+
+/* Nav */
+nav{background:var(--navy2);display:flex;overflow-x:auto;flex-shrink:0;}
+nav button{background:none;border:none;color:rgba(255,255,255,.6);padding:11px 22px;cursor:pointer;font-size:14px;font-weight:500;border-bottom:3px solid transparent;white-space:nowrap;transition:all .15s;}
+nav button:hover{color:#fff;}
+nav button.active{color:#fff;border-bottom-color:#60a5fa;background:rgba(255,255,255,.07);}
+
+/* Tabs */
+.tab{display:none;padding:14px;flex:1;overflow:hidden;flex-direction:column;}
+.tab.active{display:flex;}
+
+/* Controls */
+.ctrl{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;align-items:flex-end;flex-shrink:0;}
+.ctrl-sticky{position:sticky;top:0;z-index:10;background:var(--bg);padding:8px 0 6px 0;margin-bottom:6px;}
+.ctrl-g label{font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px;}
+select{border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--text);padding:7px 10px;font-size:14px;cursor:pointer;min-width:160px;}
+input[type=text]{border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--text);padding:7px 10px;font-size:14px;min-width:200px;}
+input[type=text]::placeholder{color:var(--muted);}
+.pills{display:flex;gap:3px;}
+.pill{border:1px solid var(--border);border-radius:20px;background:#fff;color:var(--text);padding:6px 14px;font-size:13px;cursor:pointer;}
+.pill.on{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-search{background:var(--accent);color:#fff;border:none;border-radius:4px;padding:8px 18px;cursor:pointer;font-size:14px;font-weight:600;}
+.btn-dl{background:#16a34a;color:#fff;border:none;border-radius:4px;padding:7px 14px;cursor:pointer;font-size:13px;font-weight:600;}
+
+/* Multi-select */
+.ms-wrap{position:relative;}
+.ms-btn{border:1px solid var(--border);border-radius:4px;background:#fff;padding:7px 10px;cursor:pointer;font-size:14px;min-width:200px;display:flex;justify-content:space-between;align-items:center;gap:6px;}
+.ms-btn::after{content:'▾';color:var(--muted);font-size:10px;}
+.ms-dd{display:none;position:absolute;top:calc(100% + 2px);left:0;background:#fff;border:1px solid var(--border);border-radius:4px;z-index:50;min-width:280px;max-height:280px;overflow-y:auto;box-shadow:0 4px 14px rgba(0,0,0,.12);}
+.ms-dd.open{display:block;}
+.ms-search{padding:6px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;z-index:1;}
+.ms-search input{width:100%;border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:11px;}
+.ms-dd label{display:flex;align-items:center;gap:8px;padding:8px 14px;cursor:pointer;font-size:14px;}
+.ms-dd label:hover{background:#f0f4ff;}
+.ms-all{border-bottom:1px solid var(--border);font-weight:700;background:#f8f9fb;}
+
+/* Card */
+.card{background:#fff;border-radius:6px;border:1px solid var(--border);margin-bottom:14px;overflow:hidden;}
+.card.fill{flex:1;display:flex;flex-direction:column;margin-bottom:0;}
+.card.fill .tw{flex:1;max-height:none;}
+.card-hdr{background:var(--navy);color:#fff;padding:9px 14px;font-weight:700;font-size:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;}
+.card-hdr .tags{display:flex;gap:5px;align-items:center;}
+.tag{font-size:12px;font-weight:400;background:rgba(255,255,255,.15);padding:1px 8px;border-radius:10px;}
+.tag-auto{background:rgba(96,165,250,.3);font-size:12px;font-weight:500;padding:1px 8px;border-radius:10px;}
+
+/* Table */
+.tw{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 260px);}
+.tw::-webkit-scrollbar{height:10px;width:8px;}
+.tw::-webkit-scrollbar-track{background:#e8edf7;border-radius:4px;}
+.tw::-webkit-scrollbar-thumb{background:#6b8cba;border-radius:4px;}
+.tw::-webkit-scrollbar-thumb:hover{background:#1a3a5c;}
+.tw::-webkit-scrollbar-corner{background:#e8edf7;}
+table{border-collapse:collapse;width:100%;min-width:400px;}
+th{background:#1a2744;color:#fff;padding:7px 10px;text-align:center;font-size:13px;font-weight:600;white-space:nowrap;position:sticky;top:0;z-index:3;border-right:1px solid rgba(255,255,255,.1);}
+.tw table thead tr:nth-child(2) th{top:40px;z-index:2;}
+.tw table thead tr:nth-child(3) th{top:80px;z-index:1;}
+th.L{text-align:left;}
+th.freeze{position:sticky;left:0;z-index:4;background:#1a2744;}
+.nps-pill{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:13px;cursor:pointer;background:#fff;user-select:none;}
+.nps-pill input{cursor:pointer;}
+.nps-pill:has(input:checked){background:#243360;color:#fff;border-color:#243360;}
+.nps-r1{background:#d4edda!important;color:#155724;}
+.nps-r2{background:#cce5ff!important;color:#004085;}
+.nps-r3{background:#fff9c4!important;color:#7d6608;}
+.nps-r4{background:#ffe5cc!important;color:#7d3c00;}
+.nps-r5{background:#ffd5d5!important;color:#7d0000;}
+td{padding:6px 10px;border-bottom:1px solid #f0f1f5;border-right:1px solid #f4f5f8;text-align:center;white-space:nowrap;font-size:14px;}
+td.L{text-align:left;}
+td.freeze{position:sticky;left:0;background:inherit;z-index:1;border-right:2px solid var(--border);}
+tr:hover td{filter:brightness(0.97);}
+tbody tr:nth-child(even) td{background:#f8f9fd;}
+tbody tr:nth-child(odd) td{background:#fff;}
+tbody tr.g-row td,tbody tr.g-row:nth-child(even) td{background:#e8edf7;}
+tbody tr.ptype-row td,tbody tr.ptype-row:nth-child(even) td{background:#243360;color:#fff;}
+tbody tr.f-row td,tbody tr.f-row:nth-child(even) td{background:#fff8e1;}
+tbody tr.t-row td,tbody tr.t-row:nth-child(even) td{background:#e0e7ff;}
+tbody tr:hover td{background:#eef1fb!important;filter:none;}
+tbody tr.c-red,tbody tr:nth-child(even) td.c-red{background:#ffe0e0!important;}
+td.c-red{background:#ffe0e0!important;}
+td.c-orange{background:#fff0d9!important;}
+td.c-green{background:#e0f5e0!important;}
+tr.g-row td{background:#e8edf7;font-weight:700;color:var(--navy);}
+tr.g-row td.freeze{background:#e8edf7;}
+tr.ptype-row td.freeze{background:#243360;color:#fff;}
+tr.f-row td{background:var(--flag);}
+tr.t-row td{background:#e0e7ff;font-weight:700;}
+tr.ptype-row td{background:#243360;color:#fff;font-weight:700;font-size:11px;}
+
+/* Color cells */
+.c-red{background:var(--cell-red)!important;}
+.c-orange{background:var(--cell-orange)!important;}
+.c-green{background:var(--cell-green)!important;}
+.di-red{color:#cc0000;font-weight:700;}
+
+/* Badges */
+.badge{display:inline-block;border-radius:3px;padding:2px 7px;font-size:12px;font-weight:700;}
+.b-red{background:#fde8e8;color:var(--red);}
+.b-green{background:#e8f5e9;color:var(--green);}
+.b-blue{background:#e3eeff;color:var(--accent);}
+.b-grey{background:#f3f4f6;color:var(--muted);}
+
+/* Legend */
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px;font-size:13px;align-items:center;flex-shrink:0;}
+.leg{display:flex;align-items:center;gap:4px;}
+.leg-box{width:14px;height:14px;border-radius:2px;border:1px solid rgba(0,0,0,.1);}
+
+/* Misc */
+.num{font-variant-numeric:tabular-nums;}
+.muted{color:var(--muted);}
+.sm{font-size:13px;}
+.info{background:#e8edf7;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--navy2);line-height:1.6;flex-shrink:0;}
+
+/* Toast */
+#toast{position:fixed;bottom:20px;right:20px;background:#1e2533;color:#fff;padding:12px 18px;border-radius:6px;font-size:14px;z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;max-width:380px;}
+#toast.show{transform:translateY(0);opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="display:none;position:fixed;inset:0;background:var(--navy);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:40px 48px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.4);text-align:center;">
+    <div style="font-size:32px;margin-bottom:8px;">📦</div>
+    <h2 style="font-size:20px;font-weight:700;color:var(--navy);margin-bottom:4px;">S&L Inventory Dashboard</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:28px;">Sign in to continue</p>
+    <div style="text-align:left;margin-bottom:14px;">
+      <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Username</label>
+      <input id="login-user" type="text" placeholder="Enter username"
+        style="width:100%;border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13px;outline:none;"
+        onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()"/>
+    </div>
+    <div style="text-align:left;margin-bottom:20px;">
+      <label style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">Password</label>
+      <input id="login-pass" type="password" placeholder="Enter password"
+        style="width:100%;border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13px;outline:none;"
+        onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div id="login-err" style="display:none;background:#fde8e8;color:var(--red);border-radius:6px;padding:8px 12px;font-size:12px;margin-bottom:14px;">
+      ❌ Incorrect username or password.
+    </div>
+    <button onclick="doLogin()"
+      style="width:100%;background:var(--navy);color:#fff;border:none;border-radius:6px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;transition:background .2s;"
+      onmouseover="this.style.background='var(--accent)'" onmouseout="this.style.background='var(--navy)'">
+      Sign In
+    </button>
+    <p style="font-size:10px;color:var(--muted);margin-top:16px;">Session ends when you close the tab.</p>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading">
+  <h2>📦 S&L Inventory Dashboard</h2>
+  <div class="ld-bar"><div class="ld-fill"></div></div>
+  <div id="load-msg">Fetching latest data…</div>
+  <div id="load-err"></div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div>
+      <div class="h-title">📦 State &amp; Liberty — Inventory Dashboard</div>
+      <div class="h-sub" id="hdate">—</div>
+    </div>
+    <div class="h-right">
+      <span class="h-badge" id="data-age">—</span>
+      <span class="h-badge" id="user-badge" style="background:rgba(255,255,255,.15)">👤 —</span>
+      <button class="hbtn dl" onclick="downloadAll()">⬇ Download All</button>
+      <button class="hbtn" onclick="logout()" title="Sign out">🚪 Sign Out</button>
+    </div>
+  </header>
+
+  <nav>
+    <button class="active" onclick="switchTab('whse',this)">🏭 WH Stock Overview</button>
+    <button onclick="switchTab('lowstock',this)">🔴 Low Stock</button>
+    <button onclick="switchTab('zero',this)">⚠ Weekly Zero Threshold</button>
+    <button onclick="switchTab('sku',this)">🔍 SKU Search</button>
+    <button onclick="switchTab('group',this)">📦 Search by Group</button>
+    <button onclick="switchTab('po',this)">📋 PO Checking</button>
+    <button onclick="switchTab('nps',this)">📈 New Product Sales</button>
+  </nav>
+
+  <!-- TAB 1: WH STOCK OVERVIEW -->
+  <div id="tab-whse" class="tab active">
+    <div class="ctrl ctrl-sticky">
+      <div class="ctrl-g">
+        <label>Search Item</label>
+        <input type="text" id="whse-search" placeholder="🔍 Search parent name…"
+          style="min-width:240px"
+          oninput="whseSearch=this.value.toLowerCase();renderWhse()"/>
+      </div>
+      <div class="ctrl-g">
+        <label>Sales Period</label>
+        <div class="pills" id="wp">
+          <button class="pill on" data-p="L30">L30</button>
+          <button class="pill" data-p="L45">L45</button>
+          <button class="pill" data-p="L60">L60</button>
+          <button class="pill" data-p="L90">L90</button>
+        </div>
+      </div>
+
+      <div class="ctrl-g">
+        <label>Auto Section: Min Total OH</label>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="number" id="oh-min" value="200" min="0" step="50"
+            style="width:80px;border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-size:12px;"
+            onchange="renderWhse()" oninput="renderWhse()"/>
+          <span style="font-size:11px;color:var(--muted)">or has PO</span>
+        </div>
+      </div>
+      <div class="ctrl-g" style="margin-top:18px">
+        <button class="btn-dl" onclick="downloadWhse()">⬇ Excel</button>
+      </div>
+    </div>
+    <div class="legend">
+      <strong>WH INV / Total OH:</strong>
+      <div class="leg"><div class="leg-box" style="background:var(--cell-red)"></div> ≤ 10</div>
+      <div class="leg"><div class="leg-box" style="background:var(--cell-orange)"></div> ≤ 20</div>
+      <div class="leg"><div class="leg-box" style="background:#fff;"></div> &gt; 20</div>
+      &nbsp;|&nbsp; <strong>WH DOS:</strong>
+      <div class="leg"><span style="color:#cc0000;font-weight:700">■</span> ≤ 30 days</div>
+      <div class="leg"><span class="badge b-grey">■</span> &gt; 30 days</div>
+      &nbsp;|&nbsp; <strong>Staple</strong> items always shown · <strong>Auto</strong> = OH ≥ 200 or has PO
+    </div>
+    <div id="whse-body" style="flex:1;overflow-y:auto;overflow-x:hidden;"></div>
+  </div>
+
+  <!-- TAB 2: WEEKLY ZERO THRESHOLD -->
+  <div id="tab-zero" class="tab">
+    <div class="ctrl">
+      <div class="ctrl-g" style="margin-top:0">
+        <button class="btn-dl" onclick="downloadZero()">⬇ Excel</button>
+      </div>
+    </div>
+    <div class="info">
+      SKUs where <strong>WH Inv &lt; 5</strong>, <strong>no PO on Order</strong>, and <strong>Threshold &gt; 0</strong>.
+      All sibling SKUs of each flagged parent are shown. <span style="color:var(--amber);font-weight:600">Yellow rows</span> = flagged SKUs.
+    </div>
+    <div id="zero-body" style="flex:1;overflow-y:auto;overflow-x:hidden;"></div>
+  </div>
+
+  <!-- TAB 3: SKU SEARCH -->
+  <div id="tab-sku" class="tab">
+    <div class="ctrl">
+      <div class="ctrl-g">
+        <label>Product Type</label>
+        <select id="sku-type" onchange="onSkuType()"><option value="">— All —</option></select>
+      </div>
+      <div class="ctrl-g">
+        <label>Search &amp; Select Parent</label>
+        <div class="ms-wrap">
+          <button class="ms-btn" id="sku-ms-btn" onclick="toggleSkuMs(event)">Select parent</button>
+          <div class="ms-dd" id="sku-ms-dd">
+            <div class="ms-search"><input type="text" placeholder="Search parent…" oninput="filterSkuMs(this.value)"/></div>
+          </div>
+        </div>
+        <input type="hidden" id="sku-parent" value=""/>
+      </div>
+      <div class="ctrl-g">
+        <label>Sales Period</label>
+        <div class="pills" id="sp">
+          <button class="pill on" data-p="L30">L30</button>
+          <button class="pill" data-p="L45">L45</button>
+          <button class="pill" data-p="L60">L60</button>
+          <button class="pill" data-p="L90">L90</button>
+        </div>
+      </div>
+      <div class="ctrl-g" style="margin-top:18px">
+        <button class="btn-dl" onclick="downloadSku()">⬇ Excel</button>
+      </div>
+    </div>
+    <div class="legend">
+      <strong>Store On Hand:</strong>
+      <div class="leg"><div class="leg-box" style="background:var(--cell-green)"></div> ≥ Threshold</div>
+      <div class="leg"><div class="leg-box" style="background:var(--cell-red)"></div> &lt; Threshold or Zero</div>
+    </div>
+    <div id="sku-body" style="flex:1;overflow-y:auto;overflow-x:hidden;"></div>
+  </div>
+
+  <!-- TAB 4: SEARCH BY GROUP -->
+  <div id="tab-group" class="tab">
+    <div class="ctrl">
+      <div class="ctrl-g">
+        <label>Product Type</label>
+        <select id="grp-type" onchange="onGrpType()"><option value="">— All —</option></select>
+      </div>
+      <div class="ctrl-g">
+        <label>Search &amp; Select Parent(s)</label>
+        <div class="ms-wrap">
+          <button class="ms-btn" id="ms-btn" onclick="toggleMs(event)">Select parents</button>
+          <div class="ms-dd" id="ms-dd">
+            <div class="ms-search"><input type="text" placeholder="Search parent…" oninput="filterMs(this.value)"/></div>
+          </div>
+        </div>
+      </div>
+      <div class="ctrl-g">
+        <label>Sales Period</label>
+        <div class="pills" id="gp">
+          <button class="pill on" data-p="L30">L30</button>
+          <button class="pill" data-p="L45">L45</button>
+          <button class="pill" data-p="L60">L60</button>
+          <button class="pill" data-p="L90">L90</button>
+        </div>
+      </div>
+      <div class="ctrl-g" style="margin-top:18px;display:flex;gap:6px">
+        <button class="btn-search" onclick="renderGroupSearch()">Search</button>
+        <button class="btn-dl" onclick="downloadGroup()">⬇ Excel</button>
+      </div>
+    </div>
+    <div class="legend">
+      <strong>Store On Hand:</strong>
+      <div class="leg"><div class="leg-box" style="background:var(--cell-green)"></div> ≥ Threshold</div>
+      <div class="leg"><div class="leg-box" style="background:var(--cell-red)"></div> &lt; Threshold or Zero</div>
+    </div>
+    <div id="grp-body" style="flex:1;overflow-y:auto;overflow-x:hidden;"></div>
+  </div>
+  <!-- TAB 6: LOW STOCK -->
+  <div id="tab-lowstock" class="tab">
+    <div class="ctrl ctrl-sticky">
+      <div class="ctrl-g">
+        <label>Search Item</label>
+        <input type="text" id="ls-search" placeholder="🔍 Search parent name…"
+          style="min-width:220px" oninput="lsSearch=this.value.toLowerCase();renderLowStock()"/>
+      </div>
+      <div class="ctrl-g">
+        <label>Sales Period</label>
+        <div class="pills" id="lsp">
+          <button class="pill on" data-p="L30">L30</button>
+          <button class="pill" data-p="L45">L45</button>
+          <button class="pill" data-p="L60">L60</button>
+          <button class="pill" data-p="L90">L90</button>
+        </div>
+      </div>
+      <div class="ctrl-g">
+        <label>Auto Section: Min Total OH</label>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="number" id="ls-oh-min" value="200" min="0" step="50"
+            style="width:80px;border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-size:13px;"
+            onchange="renderLowStock()" oninput="renderLowStock()"/>
+          <span style="font-size:13px;color:var(--muted)">or has PO</span>
+        </div>
+      </div>
+      <div class="ctrl-g" style="margin-top:18px">
+        <button class="btn-dl" onclick="downloadLowStock()">⬇ Excel</button>
+      </div>
+    </div>
+    <div class="legend">
+      <strong>Shows items where WH DOS ≤ 30 days.</strong>
+      &nbsp;|&nbsp; <span class="badge b-red">DI ≤ 14</span> Critical &nbsp;
+      <span class="badge b-amber">DI ≤ 30</span> Low &nbsp;
+      WH INV: <div class="leg"><div class="leg-box" style="background:var(--cell-red)"></div> ≤10</div>
+      <div class="leg"><div class="leg-box" style="background:var(--cell-orange)"></div> ≤20</div>
+    </div>
+    <div id="ls-body" style="flex:1;overflow-y:auto;overflow-x:hidden;"></div>
+  </div>
+
+  <!-- TAB 5: PO CHECKING -->
+  <div id="tab-po" class="tab">
+    <div class="ctrl ctrl-sticky" style="flex-wrap:wrap;gap:12px;">
+      <div class="ctrl-g">
+        <label>Product Type</label>
+        <select id="po-type-filter" onchange="onPoTypeFilter()"
+          style="min-width:160px;font-size:13px;border:1px solid var(--border);border-radius:4px;padding:6px 8px;">
+          <option value="">— All Types —</option>
+        </select>
+      </div>
+      <div class="ctrl-g">
+        <label>PO Reference (Col J)</label>
+        <div class="ms-wrap" id="po-ms-wrap">
+          <button class="ms-btn" id="po-ms-btn" onclick="togglePoMs(event)">Select PO refs</button>
+          <div class="ms-dd" id="po-ms-dd">
+            <div class="ms-search">
+              <input type="text" placeholder="🔍 Search PO ref…" oninput="filterPoRefs(this.value)"/>
+            </div>
+            <label class="ms-all" id="po-ms-all-lbl">
+              <input type="checkbox" id="po-ms-all" onchange="poMsAll(this)"/> Select All
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="ctrl-g">
+        <label>Mode</label>
+        <span id="po-mode" style="font-size:13px;padding:5px 10px;background:#e3eeff;color:var(--accent);border-radius:6px;font-weight:600;">—</span>
+      </div>
+      <div class="ctrl-g">
+        <label>EXF Date (Col O)</label>
+        <span id="po-exf" style="font-size:13px;font-weight:600;color:var(--text);">—</span>
+      </div>
+      <div class="ctrl-g">
+        <label>Expected ETA (SEA+45 / AIR+15)</label>
+        <span id="po-exp-eta" style="font-size:13px;font-weight:600;color:var(--accent);">—</span>
+      </div>
+      <div class="ctrl-g">
+        <label>Override ETA (Current ETA)</label>
+        <input type="date" id="po-override-eta" style="font-size:13px;border:1px solid var(--border);border-radius:4px;padding:5px 8px;" oninput="renderPoChecking()"/>
+      </div>
+      <div class="ctrl-g">
+        <label>Sales Period</label>
+        <div class="pills" id="posp">
+          <button class="pill on" data-p="L30">L30</button>
+          <button class="pill" data-p="L45">L45</button>
+          <button class="pill" data-p="L60">L60</button>
+          <button class="pill" data-p="L90">L90</button>
+        </div>
+      </div>
+      <div class="ctrl-g" style="margin-top:18px">
+        <button class="btn-dl" onclick="downloadPo()">⬇ Excel</button>
+      </div>
+    </div>
+    <div id="po-body" style="flex:1;overflow-y:auto;overflow-x:hidden;"></div>
+  </div>
+  <!-- TAB: NEW PRODUCT SALES -->
+  <div id="tab-nps" class="tab">
+    <div class="ctrl ctrl-sticky" style="flex-wrap:wrap;gap:12px;">
+      <div class="ctrl-g">
+        <label>Product Type</label>
+        <select id="nps-type" onchange="onNpsTypeChange()"
+          style="min-width:160px;font-size:13px;border:1px solid var(--border);border-radius:4px;padding:6px 8px;">
+          <option value="">— All Types —</option>
+        </select>
+      </div>
+      <div class="ctrl-g">
+        <label>Parent Name</label>
+        <div class="ms-wrap" id="nps-ms-wrap">
+          <button class="ms-btn" id="nps-ms-btn" onclick="toggleNpsMs(event)">Select parents</button>
+          <div class="ms-dd" id="nps-ms-dd">
+            <div class="ms-search">
+              <input type="text" placeholder="🔍 Search…" oninput="filterNpsMs(this.value)"/>
+            </div>
+            <label class="ms-all">
+              <input type="checkbox" id="nps-ms-all" onchange="npsAllMs(this)"/> Select All
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="ctrl-g">
+        <label>Sales Periods</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <label class="nps-pill"><input type="checkbox" class="nps-pd" value="7"  checked onchange="renderNPS()"/> 7D</label>
+          <label class="nps-pill"><input type="checkbox" class="nps-pd" value="15" checked onchange="renderNPS()"/> 15D</label>
+          <label class="nps-pill"><input type="checkbox" class="nps-pd" value="30" checked onchange="renderNPS()"/> 30D</label>
+          <label class="nps-pill"><input type="checkbox" class="nps-pd" value="45" checked onchange="renderNPS()"/> 45D</label>
+          <label class="nps-pill"><input type="checkbox" class="nps-pd" value="60" checked onchange="renderNPS()"/> 60D</label>
+          <label class="nps-pill"><input type="checkbox" class="nps-pd" value="90" checked onchange="renderNPS()"/> 90D</label>
+        </div>
+      </div>
+      <div class="ctrl-g">
+        <label>Show Sales Config</label>
+        <label class="nps-pill" style="background:#e8f0fa;border-color:#6b8cba;">
+          <input type="checkbox" id="nps-show-cfg" onchange="renderNPS()"/>
+          Override / Start / Next Sales
+        </label>
+      </div>
+      <div class="ctrl-g" style="margin-top:18px">
+        <button class="btn-search" onclick="renderNPS()">🔍 View</button>
+        <button class="btn-dl" onclick="downloadNPS()" style="margin-left:8px">⬇ Excel</button>
+      </div>
+    </div>
+    <div id="nps-last-date" style="padding:6px 12px;font-size:13px;background:#fff8e1;border-bottom:1px solid #ffe082;color:#5d4037;display:none;">
+      📅 <strong>Last Date Captured:</strong> <span id="nps-last-date-val">—</span>
+      &nbsp;·&nbsp; <span style="color:#888;font-style:italic">Contact Admin if data needs to be updated</span>
+    </div>
+    <div id="nps-body" style="flex:1;overflow-y:auto;overflow-x:auto;"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// CONFIG — update DATA_URL to your GitHub raw or Pages URL
+// ============================================================
+const DATA_URL  = './data.json';
+const SALES_URL = './sales_data.json';
+// const DATA_URL = 'https://raw.githubusercontent.com/jaysonsnl13/SCM-Dashboard/main/data.json';
+// ============================================================
+
+let D = null;
+let wP='L30', sP='L30', gP='L30';
+let whseSearch = '';
+let lsSearch   = '';
+let lsPeriod   = 'L30';
+
+let poPeriod   = 'L30';
+let poOverrideEta = '';
+
+
+// ============================================================
+// INIT
+// ============================================================
+// ── SHA-256 hash (matches server-side hash) ──────────────────
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>('0'+b.toString(16)).slice(-2)).join('');
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────
+async function doLogin() {
+  const user = document.getElementById('login-user').value.trim().toLowerCase();
+  const pass = document.getElementById('login-pass').value;
+  const err  = document.getElementById('login-err');
+  if (!user || !pass) { err.style.display='block'; err.textContent='❌ Please enter username and password.'; return; }
+  const hash = await sha256(pass);
+  const match = (D?.users||[]).find(u => u.username === user && u.passwordHash === hash);
+  if (match) {
+    sessionStorage.setItem('sl_auth', JSON.stringify({user, hash}));
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('loading').style.display = 'flex';
+    init();
+  } else {
+    err.style.display = 'block';
+    err.textContent = '❌ Incorrect username or password.';
+    document.getElementById('login-pass').value = '';
+  }
+}
+
+function checkSession() {
+  // Check if user already logged in this session
+  const saved = sessionStorage.getItem('sl_auth');
+  if (!saved || !D?.users) return false;
+  const { user, hash } = JSON.parse(saved);
+  return (D.users||[]).some(u => u.username === user && u.passwordHash === hash);
+}
+
+function getEst8amToday() {
+  // Returns today's 8:00 AM EST as UTC ms
+  const now = new Date();
+  // EST = UTC-5, EDT = UTC-4; use UTC-5 conservatively
+  const estOffset = 5 * 60; // minutes
+  const nowEst = new Date(now.getTime() - estOffset * 60000);
+  const est8am = new Date(Date.UTC(
+    nowEst.getUTCFullYear(), nowEst.getUTCMonth(), nowEst.getUTCDate(),
+    8 + (estOffset / 60), 0, 0, 0 // 8am EST = 13:00 UTC
+  ));
+  return est8am.getTime();
+}
+
+function isCacheStale(cachedAt) {
+  const now = Date.now();
+  const est8am = getEst8amToday();
+  // Cache is stale if:
+  // 1. It's past 8am EST today AND cache was fetched before 8am EST today
+  // 2. OR cache is older than 24 hours
+  const olderThan24h = now - cachedAt > 24 * 60 * 60 * 1000;
+  const pastEst8am   = now >= est8am;
+  const cachedBefore8am = cachedAt < est8am;
+  return olderThan24h || (pastEst8am && cachedBefore8am);
+}
+
+async function loadData() {
+  try {
+    // Show login screen immediately — load data in background
+    // So user can start typing while data loads
+    document.getElementById('loading').style.display = 'none';
+
+    if (checkSession()) {
+      // Already logged in — show loading spinner then dashboard
+      document.getElementById('loading').style.display = 'flex';
+      document.getElementById('load-msg').textContent = 'Loading data…';
+    } else {
+      // Show login first, fetch data silently in background
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('login-user').focus();
+    }
+
+    // Check sessionStorage cache first (skip if stale)
+    const _cached   = sessionStorage.getItem('sl_data_cache');
+    const _cachedAt = parseInt(sessionStorage.getItem('sl_data_cache_at') || '0');
+    if (_cached && _cachedAt && !isCacheStale(_cachedAt)) {
+      try {
+        D = JSON.parse(_cached);
+        // Also restore sales cache
+        const _sc = sessionStorage.getItem('sl_sales_cache');
+        const _sca = parseInt(sessionStorage.getItem('sl_sales_cache_at')||'0');
+        if(_sc && _sca && !isCacheStale(_sca)) {
+          try { D.newProductSales = JSON.parse(_sc); } catch(e) {}
+        } else {
+          // Refetch sales_data.json if stale
+          fetch(SALES_URL + '?t=' + Date.now())
+            .then(r=>r.ok?r.json():null)
+            .then(sd=>{if(sd){D.newProductSales=sd;try{sessionStorage.setItem('sl_sales_cache',JSON.stringify(sd));sessionStorage.setItem('sl_sales_cache_at',String(Date.now()));}catch(e){}initNPS();}})
+            .catch(()=>{});
+        }
+        console.log('Using cached data from ' + new Date(_cachedAt).toLocaleTimeString());
+        if (checkSession()) { init(); }
+        else { document.getElementById('login-screen').style.display = 'flex'; document.getElementById('loading').style.display = 'none'; }
+        return;
+      } catch(e) {
+        sessionStorage.removeItem('sl_data_cache');
+        sessionStorage.removeItem('sl_data_cache_at');
+      }
+    }
+
+    // Fetch fresh data
+    const res = await fetch(DATA_URL + '?t=' + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status} — ${res.statusText}`);
+    D = await res.json();
+
+    // Cache with timestamp
+    try {
+      sessionStorage.setItem('sl_data_cache', JSON.stringify(D));
+      sessionStorage.setItem('sl_data_cache_at', String(Date.now()));
+    } catch(e) { /* storage full */ }
+
+    // Load sales_data.json in parallel (non-blocking)
+    fetch(SALES_URL + '?t=' + Date.now())
+      .then(r => r.ok ? r.json() : null)
+      .then(sd => {
+        if(sd) {
+          D.newProductSales = sd;
+          try {
+            sessionStorage.setItem('sl_sales_cache', JSON.stringify(sd));
+            sessionStorage.setItem('sl_sales_cache_at', String(Date.now()));
+          } catch(e) {}
+          // Only init NPS if app is already visible (user logged in)
+          if(document.getElementById('app')?.classList.contains('visible')) {
+            initNPS();
+          }
+        }
+      }).catch(() => {}); // silently ignore if file doesn't exist yet
+
+
+    if (checkSession()) {
+      init();
+    } else {
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('loading').style.display = 'none';
+    }
+  } catch(e) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('loading').style.display = 'flex';
+    const el = document.getElementById('load-err');
+    el.style.display = 'block';
+    el.textContent = 'Failed to load data: ' + e.message + '\n\nMake sure:\n1. buildAndPushData() ran successfully in Apps Script\n2. data.json exists in your GitHub repo\n3. GitHub Pages is enabled';
+    document.getElementById('load-msg').textContent = '';
+  }
+}
+
+function reloadData() {
+  document.getElementById('app').classList.remove('visible');
+  D = null;
+  loadData();
+}
+
+function logout() {
+  sessionStorage.removeItem('sl_auth');
+  sessionStorage.removeItem('sl_data_cache');
+  sessionStorage.removeItem('sl_data_cache_at');
+  sessionStorage.removeItem('sl_sales_cache');
+  sessionStorage.removeItem('sl_sales_cache_at');
+  document.getElementById('app').style.display = 'none';
+  D = null;
+  loadData();
+}
+
+function init() {
+  document.getElementById('hdate').textContent = 'INV Updated: ' + (D.dateUpdated||'—');
+  setDataAge(D.generatedAt);
+
+  // Filter out header/placeholder stores from data
+  if(D.stores) D.stores = D.stores.filter(s => {
+    const n=(s.name||'').toLowerCase().trim();
+    return n && !['store name','inv store name','store','name','stores','header'].includes(n);
+  });
+
+  ['sku-type','grp-type'].forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="">— All —</option>';
+    D.productTypes.forEach(t => sel.insertAdjacentHTML('beforeend', `<option value="${x(t)}">${x(t)}</option>`));
+  });
+  pill('wp', v => { wP=v; renderWhse(); });
+  pill('lsp', v => { lsPeriod=v; renderLowStock(); });
+  pill('posp', v => { poPeriod=v; renderPoChecking(); });
+
+
+  pill('sp', v => { sP=v; renderSkuSearch(); });
+  pill('gp', v => { 
+    gP=v; 
+    // Auto re-render if results already showing
+    if(document.getElementById('grp-body').innerHTML) renderGroupSearch(); 
+  });
+  document.addEventListener('click', e => {
+    if (!document.getElementById('ms-dd').closest('.ms-wrap').contains(e.target)) closeMs();
+    if (document.getElementById('sku-ms-dd') &&
+        !document.getElementById('sku-ms-dd').closest('.ms-wrap').contains(e.target)) closeSkuMs();
+    if (document.getElementById('po-ms-dd') &&
+        !document.getElementById('po-ms-wrap').contains(e.target)) closePoMs();
+    if (document.getElementById('nps-ms-dd') &&
+        !document.getElementById('nps-ms-wrap').contains(e.target)) closeNpsMs();
+  });
+  // Initialize parent lists
+  buildSkuMs(D.allParentNames.sort());
+  buildMs(D.allParentNames.sort());
+  renderWhse();
+  renderZero();
+  populatePoRefs();
+  renderLowStock();
+  // initNPS needs sales data — call now and also after sales data loads
+  initNPS();
+  scheduleNextRefetch();
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  // Show logged in user
+  try {
+    const saved = sessionStorage.getItem('sl_auth');
+    if (saved) {
+      const { user } = JSON.parse(saved);
+      document.getElementById('user-badge').textContent = '👤 ' + user;
+    }
+  } catch(e) {}
+}
+
+function setDataAge(iso) {
+  const el = document.getElementById('data-age');
+  if (!iso) return;
+  const mins = Math.round((Date.now()-new Date(iso))/60000);
+  const txt = mins<60?`Data: ${mins}m ago`:mins<1440?`Data: ${Math.round(mins/60)}h ago`:`Data: ${Math.round(mins/1440)}d ago`;
+  el.textContent = txt;
+  el.className = 'h-badge ' + (mins<1440?'ok':'old');
+}
+
+// ============================================================
+// TABS & PILLS
+// ============================================================
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+function pill(id, cb) {
+  document.getElementById(id).querySelectorAll('.pill').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.getElementById(id).querySelectorAll('.pill').forEach(b=>b.classList.remove('on'));
+      btn.classList.add('on'); cb(btn.dataset.p);
+    });
+  });
+}
+
+// ============================================================
+// DROPDOWNS & SEARCH
+// ============================================================
+function loadAllParents(selId, type='') {
+  const sel = document.getElementById(selId);
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Select —</option>';
+  D.allParentNames
+    .filter(pn => !type || D.parentMap[pn]?.productType===type)
+    .sort()
+    .forEach(pn => sel.insertAdjacentHTML('beforeend', `<option value="${x(pn)}">${x(pn)}</option>`));
+  if (cur) sel.value = cur;
+}
+
+function filterSkuParents(q) {} // kept for compatibility
+
+function toggleSkuMs(e) { e.stopPropagation(); document.getElementById('sku-ms-dd').classList.toggle('open'); }
+function closeSkuMs()   { document.getElementById('sku-ms-dd').classList.remove('open'); }
+
+function buildSkuMs(names) {
+  const dd = document.getElementById('sku-ms-dd');
+  const searchHtml = dd.querySelector('.ms-search')?.outerHTML || '';
+  dd.innerHTML = searchHtml;
+  names.forEach(n => {
+    const lbl = document.createElement('label');
+    lbl.style.cursor='pointer';
+    lbl.innerHTML = x(n);
+    lbl.dataset.val = n;
+    lbl.addEventListener('click', ()=>{ selectSkuParent(n); closeSkuMs(); });
+    dd.appendChild(lbl);
+  });
+}
+
+function filterSkuMs(q) {
+  document.querySelectorAll('#sku-ms-dd label').forEach(lbl=>{
+    lbl.style.display = lbl.dataset.val.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+function selectSkuParent(name) {
+  document.getElementById('sku-parent').value = name;
+  document.getElementById('sku-ms-btn').childNodes[0].textContent = name + ' ';
+  renderSkuSearch();
+}
+
+function onSkuType() {
+  const type = document.getElementById('sku-type').value;
+  const names = D.allParentNames.filter(pn=>!type||D.parentMap[pn]?.productType===type).sort();
+  buildSkuMs(names);
+  document.getElementById('sku-parent').value = '';
+  document.getElementById('sku-ms-btn').childNodes[0].textContent = 'Select parent ';
+  document.getElementById('sku-body').innerHTML = '';
+}
+
+function onGrpType() {
+  const type = document.getElementById('grp-type').value;
+  const names = D.allParentNames.filter(pn=>!type||D.parentMap[pn]?.productType===type).sort();
+  buildMs(names);
+  document.getElementById('grp-body').innerHTML = '';
+}
+
+// ============================================================
+// MULTI-SELECT
+// ============================================================
+function toggleMs(e) { e.stopPropagation(); document.getElementById('ms-dd').classList.toggle('open'); }
+function closeMs()   { document.getElementById('ms-dd').classList.remove('open'); }
+
+function buildMs(names) {
+  const dd = document.getElementById('ms-dd');
+  const searchHtml = dd.querySelector('.ms-search')?.outerHTML || '';
+  dd.innerHTML = searchHtml +
+    `<label class="ms-all"><input type="checkbox" id="ms-all" onchange="msAll(this)"> Select All</label>`;
+  names.forEach(n => dd.insertAdjacentHTML('beforeend',
+    `<label><input type="checkbox" class="ms-cb" value="${x(n)}" onchange="msLabel()"> ${x(n)}</label>`));
+  msLabel();
+}
+
+function filterMs(q) {
+  document.querySelectorAll('.ms-cb').forEach(cb => {
+    cb.closest('label').style.display = cb.value.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+function msAll(el) { document.querySelectorAll('.ms-cb').forEach(c=>c.checked=el.checked); msLabel(); }
+function msLabel() {
+  const cbs=[...document.querySelectorAll('.ms-cb')], sel=cbs.filter(c=>c.checked);
+  document.getElementById('ms-btn').childNodes[0].textContent =
+    sel.length===0?'Select parents ':sel.length===cbs.length?`All (${cbs.length}) `:`${sel.length} selected `;
+  const all=document.getElementById('ms-all');
+  if(all) all.checked = sel.length===cbs.length && cbs.length>0;
+}
+function selParents() { return [...document.querySelectorAll('.ms-cb:checked')].map(c=>c.value); }
+
+// ============================================================
+// COLOR HELPERS
+// ============================================================
+function invCls(val) {
+  const n=Number(val)||0;
+  if(n<=10) return 'c-red';
+  if(n<=20) return 'c-orange';
+  return '';
+}
+function invStyle(val) {
+  const n=Number(val)||0;
+  if(n<=10) return 'background:#ffe0e0';
+  if(n<=20) return 'background:#fff0d9';
+  return '';
+}
+function diCls(val) { return (!isNaN(Number(val))&&Number(val)<=30)?'di-red':''; }
+function diStyle(val) { return (!isNaN(Number(val))&&Number(val)<=30)?'color:#cc0000;font-weight:700':''; }
+function ohCls(onHand, threshold) {
+  const oh=Number(onHand)||0, th=Number(threshold)||0;
+  if(oh===0||(th>0&&oh<th)) return 'c-red';
+  if(th>0&&oh>=th) return 'c-green';
+  return '';
+}
+function ohStyle(onHand, threshold) {
+  const oh=Number(onHand)||0, th=Number(threshold)||0;
+  if(oh===0||(th>0&&oh<th)) return 'background:#ffe0e0';
+  if(th>0&&oh>=th) return 'background:#e0f5e0';
+  return '';
+}
+
+// ============================================================
+// TAB 1: WH STOCK OVERVIEW
+// ============================================================
+function renderWhse() {
+  if(!D) return;
+  const period=wP, days={L30:30,L45:45,L60:60,L90:90}[period], sales=D.salesData[period];
+
+  const stapleGroups = D.stapleStructure
+    .map(g=>({...g, items:g.items.filter(pn=>D.parentMap[pn]), isAuto:false}))
+    .filter(g=>g.items.length>0);
+
+  const stapleSet = new Set(D.stapleStructure.flatMap(g=>g.items));
+  const autoByType = {};
+  D.allParentNames.forEach(pn=>{
+    if(stapleSet.has(pn)||!D.parentMap[pn]) return;
+    const {totalOH,hasPO}=getOH(pn);
+    const ohMin = parseInt(document.getElementById('oh-min')?.value) || 200;
+    if(totalOH<ohMin&&!hasPO) return;
+    const pt=D.parentMap[pn].productType||'Other';
+    if(!autoByType[pt]) autoByType[pt]=[];
+    autoByType[pt].push({pn,totalOH});
+  });
+  // Sort product type groups by total sales descending (highest sales type first)
+  const autoGroups = Object.entries(autoByType)
+    .map(([pt,items]) => {
+      const groupSales = items.reduce((s,i)=>s+(sales.byParent[i.pn]||0),0);
+      const sortedItems = items.sort((a,b)=>(sales.byParent[b.pn]||0)-(sales.byParent[a.pn]||0)).map(i=>i.pn);
+      return { group:pt, items:sortedItems, isAuto:true, groupSales };
+    })
+    .sort((a,b) => b.groupSales - a.groupSales); // highest sales type first
+
+  let html='';
+  [...stapleGroups,...autoGroups].forEach(g=>{ html+=whseGroupHtml(g.group,g.items,g.isAuto,period,days,sales); });
+  document.getElementById('whse-body').innerHTML = html||'<div style="padding:20px;color:var(--muted)">No data.</div>';
+}
+
+function getOH(pn) {
+  const pm=D.parentMap[pn]; if(!pm) return {totalOH:0,hasPO:false};
+  let totalOH=0,hasPO=false;
+  pm.skus.forEach(sku=>{
+    if(D.invData[sku]) Object.values(D.invData[sku]).forEach(s=>{totalOH+=(s.onHand||0)+(s.inTransit||0);});
+    if(D.poData[sku]?.totalQty>0) hasPO=true;
+  });
+  return {totalOH,hasPO};
+}
+
+function calcParentMetrics(pn, period, days) {
+  const pm=D.parentMap[pn]; if(!pm) return null;
+  const sales=D.salesData[period];
+  const sizeInv={};
+  let grand=0,poTotal=0,whIT=0,thresh=0,totalOH=0;
+  let epDate=null,epPO=''; const upPOs=new Set();
+
+  pm.skus.forEach(sku=>{
+    const item=D.skuMap[sku]; if(!item) return;
+    const whInv=D.invData[sku]?.['Ann Arbor'];
+    const oh=whInv?whInv.onHand:(item.w||0);
+    const it=whInv?whInv.inTransit:0;
+    const whTotal=oh+it; // WH INV = OH + Intransit
+    sizeInv[item.s]=(sizeInv[item.s]||0)+whTotal;
+    grand+=whTotal; whIT+=it; poTotal+=item.o||0;
+    thresh+=D.thresholdData[sku]?._total||0;
+    if(D.invData[sku]) Object.values(D.invData[sku]).forEach(s=>{totalOH+=(s.onHand||0)+(s.inTransit||0);});
+    if(D.poData[sku]) D.poData[sku].pos.forEach(p=>{
+      if(p.po) upPOs.add(p.po);
+      if(p.eta){const d=new Date(p.eta);if(!isNaN(d)&&(!epDate||d<epDate)){epDate=d;epPO=p.po;}}
+    });
+  });
+
+  // Sales: try byParent first, fallback to sum of bySku
+  let salesQty=sales.byParent[pn]||0;
+  if(!salesQty) salesQty=pm.skus.reduce((s,sku)=>s+(sales.bySku[sku]||0),0);
+
+  const daily=salesQty/days;
+  const whDOS=daily>0?grand/daily:null;
+  let stockOut='';
+  if(whDOS&&D.dateUpdated){try{const d=new Date(D.dateUpdated);d.setDate(d.getDate()+Math.round(whDOS));stockOut=fd(d);}catch(e){}}
+
+  return {sizeInv,grand,poTotal,whIT,thresh,totalOH,salesQty,whDOS,stockOut,epDate,epPO,upPOs:([...upPOs])};
+}
+
+function whseGroupHtml(grpName, pns, isAuto, period, days, sales) {
+  // Filter by search term
+  if(whseSearch) pns = pns.filter(pn => pn.toLowerCase().includes(whseSearch));
+  if(!pns.length) return ''; // skip group if no matching items
+  const sizeSet=new Set();
+  pns.forEach(pn=>(D.parentMap[pn]?.skus.map(sk=>D.skuMap[sk]?.s||'')||[]).forEach(s=>sizeSet.add(s)));
+  const sizes=sortSizes([...sizeSet]);
+  const autoTag=isAuto?`<span class="tag-auto">Auto</span>`:`<span class="tag">Staple</span>`;
+
+  let html=`<div class="card">
+    <div class="card-hdr">
+      <span>${x(grpName)}</span>
+      <div class="tags">${autoTag}<span class="tag">${pns.length} item(s)</span></div>
+    </div>
+    <div class="tw"><table>
+    <thead><tr>
+      <th class="L freeze" style="min-width:210px">Product</th>
+      ${sizes.map(s=>`<th>${x(s)}</th>`).join('')}
+      <th>Grand Total</th><th>WH DOS</th><th>Stock Out</th>
+      <th>Earliest PO ETA</th><th>Earliest PO</th>
+      <th>Total OH</th><th>${x(period)}</th>
+      <th>Threshold</th><th>Intransit</th>
+      <th>PO On Order</th>
+      <th style="min-width:180px">Upcoming POs</th>
+    </tr></thead><tbody>`;
+
+  pns.forEach(pn=>{
+    const m=calcParentMetrics(pn,period,days); if(!m) return;
+    const {sizeInv,grand,poTotal,whIT,thresh,totalOH,salesQty,whDOS,stockOut,epDate,epPO,upPOs}=m;
+
+    const diTxt=whDOS!=null?whDOS.toFixed(1):'—';
+    const diCl=diCls(whDOS);
+
+    html+=`<tr>
+      <td class="L freeze" title="${x(pn)}">${x(pn)}</td>
+      ${sizes.map(s=>{const v=sizeInv[s]||0;return `<td class="num ${invCls(v)}">${nn(v)}</td>`}).join('')}
+      <td class="num ${invCls(grand)}">${nn(grand)}</td>
+      <td class="num"><span class="${diCl?'di-red':''}">${diTxt}</span></td>
+      <td class="sm">${stockOut||'—'}</td>
+      <td class="sm">${epDate?fd(epDate):'—'}</td>
+      <td class="sm muted">${x(epPO)||'—'}</td>
+      <td class="num ${invCls(totalOH)}">${nn(totalOH)}</td>
+      <td class="num">${nn(salesQty)}</td>
+      <td class="num">${nn(thresh)}</td>
+      <td class="num">${nn(whIT)}</td>
+      <td class="num">${nn(poTotal)}</td>
+      <td class="sm muted" style="white-space:normal;max-width:200px">${x(upPOs.join(', '))||'—'}</td>
+    </tr>`;
+  });
+  return html+'</tbody></table></div></div>';
+}
+
+// ============================================================
+// TAB 2: WEEKLY ZERO THRESHOLD — one flat table
+// ============================================================
+function renderZero() {
+  if(!D) return;
+  const flagSkus=new Set(), flagParents=new Set();
+  D.allParentNames.forEach(pn=>{
+    (D.parentMap[pn]?.skus||[]).forEach(sku=>{
+      const item=D.skuMap[sku]; if(!item) return;
+      const thr=D.thresholdData[sku]?._total||0;
+      const hasPO=D.poData[sku]?.totalQty>0;
+      if(thr>0&&item.w<5&&!hasPO){flagSkus.add(sku);flagParents.add(pn);}
+    });
+  });
+
+  if(!flagParents.size){
+    document.getElementById('zero-body').innerHTML='<div style="padding:24px;text-align:center;color:var(--green);font-weight:700;font-size:14px">✅ No flagged SKUs — all good!</div>';
+    return;
+  }
+
+  const sortedParents=[...flagParents].sort((a,b)=>(D.parentMap[a]?.productType||'').localeCompare(D.parentMap[b]?.productType||'')||a.localeCompare(b));
+
+  let html=`<div class="card">
+    <div class="card-hdr">Weekly Zero Threshold Report <span class="tag">${flagParents.size} parent(s) · ${flagSkus.size} flagged SKU(s)</span></div>
+    <div class="tw"><table>
+    <thead><tr>
+      <th class="L freeze" style="min-width:110px">Product Type</th>
+      <th class="L" style="min-width:200px">SKU</th>
+      <th class="L" style="min-width:240px">Product Name</th>
+      <th style="min-width:70px">Size</th>
+      <th style="min-width:80px">Threshold</th>
+      <th style="min-width:90px">Warehouse Inv</th>
+      <th style="min-width:80px">PO On Order</th>
+      <th style="min-width:90px">Store Inventory</th>
+      <th style="min-width:80px">Total On Hand</th>
+    </tr></thead><tbody>`;
+
+  sortedParents.forEach(pn=>{
+    const pm=D.parentMap[pn]; if(!pm) return;
+    pm.skus.forEach(sku=>{
+      const item=D.skuMap[sku]; if(!item) return;
+      const thr=D.thresholdData[sku]?._total||0;
+      const poQty=D.poData[sku]?.totalQty||0;
+      let storeInv=0;
+      if(D.invData[sku]) Object.entries(D.invData[sku]).forEach(([st,s])=>{if(st!=='Ann Arbor')storeInv+=(s.onHand||0)+(s.inTransit||0);});
+      const whZero=D.invData[sku]?.['Ann Arbor'];
+        const whZeroTotal=(whZero?(whZero.onHand+whZero.inTransit):(item.w||0));
+        const totOH=whZeroTotal+storeInv;
+      const flag=flagSkus.has(sku);
+
+      html+=`<tr class="${flag?'f-row':''}">
+        <td class="L freeze">${x(pm.productType)}</td>
+        <td class="L muted sm">${x(sku)}</td>
+        <td class="L">${x(item.n)}</td>
+        <td class="num">${x(item.s)}</td>
+        <td class="num">${nn(thr)}</td>
+        <td class="num ${invCls(whZeroTotal)}" style="${flag?'font-weight:700':''}">${nn(whZeroTotal)}</td>
+        <td class="num">${nn(poQty)}</td>
+        <td class="num">${nn(storeInv)}</td>
+        <td class="num ${invCls(totOH)}">${nn(totOH)}</td>
+      </tr>`;
+    });
+  });
+
+  html+='</tbody></table></div></div>';
+  document.getElementById('zero-body').innerHTML=html;
+}
+
+// ============================================================
+// TAB 3: SKU SEARCH
+// ============================================================
+// ============================================================
+// TAB 6: LOW STOCK (WH DOS ≤ 30) — same format as WH Overview
+// ============================================================
+function renderLowStock() {
+  if(!D) return;
+  const period=lsPeriod, days={L30:30,L45:45,L60:60,L90:90}[period];
+  const sales=D.salesData[period];
+
+  const stapleGroups=D.stapleStructure
+    .map(g=>({group:g.group,items:g.items.filter(pn=>D.parentMap[pn]),isAuto:false}))
+    .filter(g=>g.items.length>0);
+
+  // Read OH min once (used in both auto section and item filter)
+  const lsOhMin = parseInt(document.getElementById('ls-oh-min')?.value) || 0;
+
+  const stapleSet=new Set(D.stapleStructure.flatMap(g=>g.items));
+  const autoByType={};
+  D.allParentNames.forEach(pn=>{
+    if(stapleSet.has(pn)||!D.parentMap[pn]) return;
+    const {totalOH,hasPO}=getOH(pn);
+    if(totalOH<lsOhMin&&!hasPO) return; // use input value, not hardcoded 200
+    const pt=D.parentMap[pn].productType||'Other';
+    if(!autoByType[pt]) autoByType[pt]=[];
+    autoByType[pt].push({pn,totalOH});
+  });
+  const autoGroups=Object.entries(autoByType)
+    .map(([pt,items])=>{
+      const groupSales=items.reduce((s,i)=>s+(sales.byParent[i.pn]||0),0);
+      return {group:pt,items:items.sort((a,b)=>(sales.byParent[b.pn]||0)-(sales.byParent[a.pn]||0)).map(i=>i.pn),isAuto:true,groupSales};
+    })
+    .sort((a,b)=>b.groupSales-a.groupSales);
+
+  const allGroups=[...stapleGroups,...autoGroups];
+  let html='', totalItems=0;
+
+  allGroups.forEach(g=>{
+    const filtered=g.items.filter(pn=>{
+      if(lsSearch&&!pn.toLowerCase().includes(lsSearch)) return false;
+      const m=calcParentMetrics(pn,period,days);
+      if(!m||m.whDOS===null||m.whDOS>30) return false;
+      const {totalOH,hasPO}=getOH(pn);
+      if(totalOH<lsOhMin&&!hasPO) return false; // same input value
+      return true;
+    });
+    if(!filtered.length) return;
+    totalItems+=filtered.length;
+    html+=lsGroupHtml(g.group,filtered,g.isAuto,period,days,sales);
+  });
+
+  document.getElementById('ls-body').innerHTML = !html
+    ? '<div style="padding:24px;text-align:center;color:var(--green);font-weight:700;font-size:15px">✅ No low stock items matching filter!</div>'
+    : `<div style="padding:6px 4px;font-size:13px;color:var(--muted);margin-bottom:4px">${totalItems} item(s) with WH DOS ≤ 30 days</div>`+html;
+}
+
+function lsGroupHtml(grpName, pns, isAuto, period, days, sales) {
+  const sizeSet=new Set();
+  pns.forEach(pn=>(D.parentMap[pn]?.skus||[]).forEach(sk=>{const it=D.skuMap[sk];if(it&&it.s)sizeSet.add(it.s);}));
+  const sizes=sortSizes([...sizeSet]);
+  const autoTag=isAuto?`<span class="tag-auto">Auto</span>`:`<span class="tag">Staple</span>`;
+
+  const sorted=[...pns].sort((a,b)=>(calcParentMetrics(a,period,days)?.whDOS??999)-(calcParentMetrics(b,period,days)?.whDOS??999));
+
+  let html=`<div class="card">
+    <div class="card-hdr"><span>${x(grpName)}</span>
+      <div class="tags">${autoTag}<span class="tag">${pns.length} item(s)</span></div>
+    </div>
+    <div class="tw"><table>
+    <thead><tr>
+      <th class="L freeze" style="min-width:220px">Product</th>
+      ${sizes.map(s=>`<th>${x(s)}</th>`).join('')}
+      <th>Grand Total</th><th>WH DOS</th><th>Stock Out</th>
+      <th>Earliest PO ETA</th><th>Earliest PO</th>
+      <th>Total OH</th><th>${x(period)}</th>
+      <th>Threshold</th><th>Intransit</th>
+      <th>PO On Order</th>
+      <th style="min-width:180px">Upcoming POs</th>
+    </tr></thead><tbody>`;
+
+  sorted.forEach(pn=>{
+    const m=calcParentMetrics(pn,period,days); if(!m) return;
+    const {sizeInv,grand,poTotal,whIT,thresh,totalOH,salesQty,whDOS,stockOut,epDate,epPO,upPOs}=m;
+    const dosTxt=whDOS!=null?whDOS.toFixed(1):'—';
+    const dosCl=whDOS!=null?(whDOS<14?'b-red':'b-amber'):'b-grey';
+    const rowBg=whDOS!=null&&whDOS<14?'style="background:#fff0f0"':'';
+    html+=`<tr ${rowBg}>
+      <td class="L freeze" title="${x(pn)}">${x(pn)}</td>
+      ${sizes.map(s=>`<td class="num ${invCls(sizeInv[s]||0)}">${nn(sizeInv[s]||0)}</td>`).join('')}
+      <td class="num ${invCls(grand)}">${nn(grand)}</td>
+      <td><span class="badge ${dosCl}">${dosTxt}</span></td>
+      <td class="sm">${stockOut||'—'}</td>
+      <td class="sm">${epDate?fd(epDate):'—'}</td>
+      <td class="sm muted">${x(epPO)||'—'}</td>
+      <td class="num ${invCls(totalOH)}">${nn(totalOH)}</td>
+      <td class="num">${nn(salesQty)}</td>
+      <td class="num">${nn(thresh)}</td>
+      <td class="num">${nn(whIT)}</td>
+      <td class="num">${nn(poTotal)}</td>
+      <td class="sm muted" style="white-space:normal;max-width:200px">${x(upPOs.join(', '))||'—'}</td>
+    </tr>`;
+  });
+  return html+'</tbody></table></div></div>';
+}
+
+
+function renderSkuSearch() {
+  if(!D) return;
+  const pn=document.getElementById('sku-parent').value||'';
+  if(!pn){document.getElementById('sku-body').innerHTML='';return;}
+  const pm=D.parentMap[pn]; if(!pm) return;
+  const period=sP, sales=D.salesData[period], stores=D.stores;
+  const cols=['On Hand','Intransit','Threshold','Opt Stock',period+' Sales'];
+
+  const skuRows=pm.skus.map(sku=>{
+    const item=D.skuMap[sku]||{};
+    return {sku, size:item.s||'', name:item.n||'',
+      storeAgg:stores.map(st=>agg([sku],st,sales))};
+  });
+  const parentAgg=stores.map(st=>agg(pm.skus,st,sales));
+
+  // Rows = Stores, Columns = SKUs (Store Name in Col 1, frozen)
+  let html=`<div class="card">
+    <div class="card-hdr">${x(pn)} <span class="tag">${x(pm.productType)}</span></div>
+    <div class="tw"><table>
+    <thead>
+      <tr>
+        <th class="L freeze" rowspan="2" style="min-width:160px;left:0">Store</th>
+        <th colspan="5" style="background:#243360">All SKUs Combined</th>
+        ${skuRows.map(s=>`<th colspan="5" style="background:#2d3f6e;font-size:11px;white-space:normal;max-width:140px">${x(s.sku)}<br/><span style="opacity:.7;font-size:10px">${x(s.size)}</span></th>`).join('')}
+      </tr>
+      <tr>
+        ${cols.map(c=>`<th>${c}</th>`).join('')}
+        ${skuRows.flatMap(()=>cols.map(c=>`<th>${c}</th>`)).join('')}
+      </tr>
+    </thead><tbody>`;
+
+  stores.forEach((st,si)=>{
+    const sd=parentAgg[si];
+    const cls=st.isWH?'g-row':'';
+    const wh=st.isWH?' <span class="badge b-blue">WH</span>':'';
+    html+=`<tr class="${cls}">
+      <td class="L freeze" style="left:0">${x(st.name)}${wh}</td>
+      <td class="num ${ohCls(sd.onHand,sd.threshold)}">${nn(sd.onHand)}</td>
+      <td class="num">${nn(sd.inTransit)}</td>
+      <td class="num">${nn(sd.threshold)}</td>
+      <td class="num">${nn(sd.optStock)}</td>
+      <td class="num">${nn(sd.sales)}</td>
+      ${skuRows.map(sr=>{
+        const d=sr.storeAgg[si];
+        return `<td class="num ${ohCls(d.onHand,d.threshold)}">${nn(d.onHand)}</td><td class="num">${nn(d.inTransit)}</td><td class="num">${nn(d.threshold)}</td><td class="num">${nn(d.optStock)}</td><td class="num">${nn(d.sales)}</td>`;
+      }).join('')}
+    </tr>`;
+  });
+
+  html+='</tbody></table></div></div>';
+  document.getElementById('sku-body').innerHTML=html;
+}
+
+
+function agg(skus, store, sales) {
+  // Sales: bySkuStore[sku][posName] = qty sold at that store
+  // posName from LOC ID matches column B of L30/L45/L60/L90
+  // Optimal Stock: always total sum across all stores
+  let oh=0,it=0,thr=0,opt=0,s=0;
+  skus.forEach(sku=>{
+    const inv=D.invData[sku]?.[store.name]||{onHand:0,inTransit:0};
+    oh+=inv.onHand; it+=inv.inTransit;
+    thr+=store.isWH?(D.thresholdData[sku]?._total||0):(D.thresholdData[sku]?.[store.thresholdName]||0);
+    // Optimal Stock: WH = sum of all stores; individual store = that store's own qty
+    opt += store.isWH
+      ? Object.values(D.optStockData[sku]||{}).reduce((a,v)=>a+(Number(v)||0),0)
+      : (D.optStockData[sku]?.[store.name]||0);
+    // WH shows total sales; stores use posName match
+    s+=store.isWH ? (sales.bySku[sku]||0) : (sales.bySkuStore[sku]?.[store.posName]||0);
+  });
+  return {onHand:oh,inTransit:it,threshold:thr,optStock:opt,sales:s};
+}
+
+// ============================================================
+// TAB 4: GROUP SEARCH
+// ============================================================
+function renderGroupSearch() {
+  if(!D) return;
+  const parents=selParents();
+  if(!parents.length){toast('Select at least one parent name.');return;}
+  const period=gP, sales=D.salesData[period], stores=D.stores;
+  const cols=['On Hand','Intransit','Threshold','Opt Stock',period+' Sales'];
+
+  const pData=parents.map(pn=>({
+    pn, pt:D.parentMap[pn]?.productType||'',
+    storeAgg:stores.map(st=>agg(D.parentMap[pn]?.skus||[],st,sales))
+  }));
+
+  const storeTotals=stores.map((_,si)=>{
+    const t={onHand:0,inTransit:0,threshold:0,optStock:0,sales:0};
+    pData.forEach(pd=>{const sd=pd.storeAgg[si];Object.keys(t).forEach(k=>t[k]+=sd[k]);});
+    return t;
+  });
+  const parentTotals=pData.map(pd=>{
+    const t={onHand:0,inTransit:0,threshold:0,optStock:0,sales:0};
+    pd.storeAgg.forEach(sd=>Object.keys(t).forEach(k=>t[k]+=sd[k]));
+    return t;
+  });
+  const gg={onHand:0,inTransit:0,threshold:0,optStock:0,sales:0};
+  storeTotals.forEach(t=>Object.keys(gg).forEach(k=>gg[k]+=t[k]));
+
+  // Rows = Stores, Columns = Parent Names (Store in Col 1, frozen)
+  let html=`<div class="card">
+    <div class="card-hdr">Group Summary <span class="tag">${parents.length} parent(s) · ${period}</span></div>
+    <div class="tw"><table>
+    <thead>
+      <tr>
+        <th class="L freeze" rowspan="2" style="min-width:160px;left:0">Store</th>
+        ${pData.map(pd=>`<th colspan="5" style="background:#2d3f6e;white-space:normal;max-width:150px;font-size:11px">${x(pd.pn)}</th>`).join('')}
+        <th colspan="5" style="background:#0f172a">TOTAL</th>
+      </tr>
+      <tr>${[...pData.flatMap(()=>cols),...cols].map(c=>`<th>${c}</th>`).join('')}</tr>
+    </thead><tbody>`;
+
+  stores.forEach((st,si)=>{
+    const cls=st.isWH?'g-row':'';
+    const wh=st.isWH?' <span class="badge b-blue">WH</span>':'';
+    const gt=storeTotals[si];
+    html+=`<tr class="${cls}">
+      <td class="L freeze" style="left:0">${x(st.name)}${wh}</td>
+      ${pData.map(pd=>{
+        const d=pd.storeAgg[si];
+        return `<td class="num ${ohCls(d.onHand,d.threshold)}">${nn(d.onHand)}</td><td class="num">${nn(d.inTransit)}</td><td class="num">${nn(d.threshold)}</td><td class="num">${nn(d.optStock)}</td><td class="num">${nn(d.sales)}</td>`;
+      }).join('')}
+      <td class="num ${ohCls(gt.onHand,gt.threshold)}">${nn(gt.onHand)}</td>
+      <td class="num">${nn(gt.inTransit)}</td>
+      <td class="num">${nn(gt.threshold)}</td>
+      <td class="num">${nn(gt.optStock)}</td>
+      <td class="num">${nn(gt.sales)}</td>
+    </tr>`;
+  });
+
+  const pgTotal={onHand:0,inTransit:0,threshold:0,optStock:0,sales:0};
+  pData.forEach(pd=>{const rt={onHand:0,inTransit:0,threshold:0,optStock:0,sales:0};pd.storeAgg.forEach(sd=>Object.keys(rt).forEach(k=>rt[k]+=sd[k]));Object.keys(pgTotal).forEach(k=>pgTotal[k]+=rt[k]);});
+
+  html+=`<tr class="t-row">
+    <td class="L freeze" style="left:0;font-weight:700">TOTAL</td>
+    ${parentTotals.map(t=>`<td class="num">${nn(t.onHand)}</td><td class="num">${nn(t.inTransit)}</td><td class="num">${nn(t.threshold)}</td><td class="num">${nn(t.optStock)}</td><td class="num">${nn(t.sales)}</td>`).join('')}
+    <td class="num">${nn(pgTotal.onHand)}</td><td class="num">${nn(pgTotal.inTransit)}</td>
+    <td class="num">${nn(pgTotal.threshold)}</td><td class="num">${nn(pgTotal.optStock)}</td>
+    <td class="num">${nn(pgTotal.sales)}</td>
+  </tr>`;
+
+  html+='</tbody></table></div></div>';
+  document.getElementById('grp-body').innerHTML=html;
+}
+
+
+// ============================================================
+// EXCEL DOWNLOADS (HTML-to-Excel with formatting)
+// ============================================================
+// Convert CSS classes to inline styles so Excel preserves colors
+function prepareForExcel(html) {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  const applyStyle = (sel, styles) => div.querySelectorAll(sel).forEach(el => Object.assign(el.style, styles));
+  applyStyle('.c-red',      {background:'#ffe0e0'});
+  applyStyle('.c-orange',   {background:'#fff0d9'});
+  applyStyle('.c-green',    {background:'#e0f5e0'});
+  applyStyle('.di-red',     {color:'#cc0000', fontWeight:'bold'});
+  applyStyle('tr.g-row td', {background:'#e8edf7', fontWeight:'bold', color:'#1a2744'});
+  applyStyle('tr.ptype-row td', {background:'#243360', color:'#ffffff', fontWeight:'bold'});
+  applyStyle('tr.f-row td', {background:'#fff8e1'});
+  applyStyle('tr.t-row td', {background:'#e0e7ff', fontWeight:'bold'});
+  applyStyle('th',          {background:'#1a2744', color:'#ffffff', fontWeight:'bold', textAlign:'center', border:'1px solid #999', padding:'5px 8px'});
+  applyStyle('td',          {border:'1px solid #ddd', padding:'4px 8px'});
+  applyStyle('.muted',      {color:'#6b7280'});
+  applyStyle('.badge.b-red',{background:'#fde8e8', color:'#c0392b', fontWeight:'bold', padding:'1px 6px', borderRadius:'3px'});
+  applyStyle('.badge.b-blue',{background:'#e3eeff', color:'#3558b0', fontWeight:'bold'});
+  // Remove sticky positioning (not needed in Excel)
+  div.querySelectorAll('th,td').forEach(el => { el.style.position=''; el.style.zIndex=''; });
+  return div.innerHTML;
+}
+
+function toExcel(tableHtml, filename) {
+  const style=`<style>
+    table{border-collapse:collapse;font-family:Calibri,Arial;font-size:11pt;}
+    th{background:#1a2744;color:#fff;padding:5px 8px;border:1px solid #999;text-align:center;font-weight:bold;}
+    td{padding:4px 8px;border:1px solid #ddd;text-align:center;}
+    .L{text-align:left;}
+    .c-red{background:#ffe0e0;}
+    .c-orange{background:#fff0d9;}
+    .c-green{background:#e0f5e0;}
+    .di-red{color:#cc0000;font-weight:bold;}
+    .g-row td{background:#e8edf7;font-weight:bold;}
+    .ptype-row td{background:#243360;color:#fff;font-weight:bold;}
+    .f-row td{background:#fff8e1;}
+    .t-row td{background:#e0e7ff;font-weight:bold;}
+  </style>`;
+  const blob=new Blob([`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8">${style}</head><body>${tableHtml}</body></html>`],
+    {type:'application/vnd.ms-excel;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename+'_'+fd(new Date()).replace(/\//g,'-')+'.xls';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function downloadWhse() {
+  const el=document.getElementById('whse-body');
+  if(!el.innerHTML){toast('No data to download.');return;}
+  toExcel(prepareForExcel(el.innerHTML),'WH_Stock_Overview');
+}
+
+function downloadZero() {
+  const el=document.getElementById('zero-body');
+  if(!el.innerHTML){toast('No data to download.');return;}
+  toExcel(prepareForExcel(el.innerHTML),'Weekly_Zero_Threshold');
+}
+
+function downloadSku() {
+  const el=document.getElementById('sku-body');
+  if(!el.innerHTML){toast('No data to download. Please select a parent name first.');return;}
+  const pn=document.getElementById('sku-parent').value||'SKU';
+  toExcel(prepareForExcel(el.innerHTML),'SKU_Search_'+pn.replace(/[^a-z0-9]/gi,'_').substring(0,30));
+}
+
+function downloadGroup() {
+  const el=document.getElementById('grp-body');
+  if(!el.innerHTML){toast('No data to download. Please run a search first.');return;}
+  toExcel(prepareForExcel(el.innerHTML),'Group_Search');
+}
+
+function downloadAll() {
+  downloadWhse();
+  setTimeout(()=>downloadZero(),500);
+}
+
+// ============================================================
+// TAB 5: PO CHECKING
+// ============================================================
+function populatePoRefs() {
+  if(!D?.poCheckingData) return;
+  // Populate product type dropdown from parentMap
+  const sel = document.getElementById('po-type-filter');
+  if(sel) {
+    sel.innerHTML = '<option value="">— All Types —</option>';
+    const types = [...new Set(
+      Object.values(D.parentMap||{}).map(p=>p.productType).filter(Boolean)
+    )].sort();
+    types.forEach(t => sel.insertAdjacentHTML('beforeend',
+      `<option value="${x(t)}">${x(t)}</option>`));
+  }
+  buildPoMs(D.poCheckingData.refs||[]);
+}
+
+function onPoTypeFilter() {
+  const type = document.getElementById('po-type-filter')?.value || '';
+  // Filter refs: keep only refs that have at least one parent of the selected type
+  const allRefs = D?.poCheckingData?.refs || [];
+  if(!type) {
+    buildPoMs(allRefs);
+    return;
+  }
+  // Filter refs whose byParent contains at least one parent matching product type
+  const filtered = allRefs.filter(ref => {
+    const r = D.poCheckingData.byRef[ref];
+    if(!r) return false;
+    return Object.keys(r.byParent||{}).some(pn =>
+      (D.parentMap[pn]?.productType||'') === type
+    );
+  });
+  buildPoMs(filtered);
+  updatePoMsLabel();
+}
+
+function buildPoMs(refs) {
+  const dd = document.getElementById('po-ms-dd');
+  if(!dd) return;
+  const searchHtml = dd.querySelector('.ms-search')?.outerHTML||'';
+  const allHtml = dd.querySelector('.ms-all')?.outerHTML||'';
+  dd.innerHTML = searchHtml + allHtml;
+  refs.forEach(ref => {
+    const lbl = document.createElement('label');
+    lbl.innerHTML = `<input type="checkbox" class="po-ms-cb" value="${x(ref)}" onchange="onPoMsChange()"/> ${x(ref)}`;
+    dd.appendChild(lbl);
+  });
+  updatePoMsLabel();
+}
+
+function filterPoRefs(q) {
+  const dd = document.getElementById('po-ms-dd');
+  if(!dd) return;
+  dd.querySelectorAll('label:not(.ms-all):not(.ms-search)').forEach(lbl => {
+    const val = lbl.querySelector('input')?.value||'';
+    lbl.style.display = !q || val.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+
+function togglePoMs(e) {
+  e.stopPropagation();
+  document.getElementById('po-ms-dd').classList.toggle('open');
+}
+
+function closePoMs() { document.getElementById('po-ms-dd')?.classList.remove('open'); }
+
+function poMsAll(el) {
+  document.querySelectorAll('.po-ms-cb').forEach(cb => cb.checked = el.checked);
+  updatePoMsLabel();
+  onPoMsChange();
+}
+
+function updatePoMsLabel() {
+  const cbs = [...document.querySelectorAll('.po-ms-cb')];
+  const sel = cbs.filter(c=>c.checked);
+  const btn = document.getElementById('po-ms-btn');
+  if(btn) btn.childNodes[0].textContent =
+    sel.length===0 ? 'Select PO refs ' :
+    sel.length===cbs.length ? `All (${cbs.length}) ` : `${sel.length} selected `;
+  const all = document.getElementById('po-ms-all');
+  if(all) {
+    all.indeterminate = sel.length>0 && sel.length<cbs.length;
+    all.checked = sel.length===cbs.length && cbs.length>0;
+  }
+}
+
+function onPoMsChange() {
+  updatePoMsLabel();
+  // Reset override ETA on change
+  const ov = document.getElementById('po-override-eta');
+  if(ov) ov.value='';
+  onPoRefChange();
+}
+
+function getSelectedPoRefs() {
+  return [...document.querySelectorAll('.po-ms-cb:checked')].map(c=>c.value);
+}
+
+function onPoRefChange() {
+  const refs = getSelectedPoRefs();
+
+  if(!refs.length || !D?.poCheckingData) {
+    document.getElementById('po-body').innerHTML='';
+    ['po-mode','po-exf','po-exp-eta'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='—';});
+    return;
+  }
+
+  // Aggregate info across selected refs
+  const modes = [...new Set(refs.map(r=>D.poCheckingData.byRef[r]?.mode).filter(Boolean))];
+  const exfs  = refs.map(r=>D.poCheckingData.byRef[r]?.exfDate).filter(Boolean).sort();
+  const etas  = refs.map(r=>D.poCheckingData.byRef[r]?.expectedEta).filter(Boolean).sort();
+
+  const modeEl=document.getElementById('po-mode'); if(modeEl) modeEl.textContent=modes.join(', ')||'—';
+  const exfEl=document.getElementById('po-exf');   if(exfEl)  exfEl.textContent=exfs[0]||'—';
+  const etaEl=document.getElementById('po-exp-eta');if(etaEl) etaEl.textContent=etas[etas.length-1]||'—';
+
+  renderPoChecking();
+}
+
+function renderPoChecking() {
+  if(!D?.poCheckingData) {
+    const b=document.getElementById('po-body');
+    if(b) b.innerHTML='<div style="padding:24px;color:var(--muted);text-align:center">No PO Checking data. Make sure "New PO Checking" tab exists in your Google Sheet and run buildAndPushData().</div>';
+    return;
+  }
+  const refs=getSelectedPoRefs();
+  if(!refs.length){
+    const b=document.getElementById('po-body');
+    if(b) b.innerHTML='<div style="padding:24px;color:var(--muted);text-align:center;font-size:14px">Select one or more PO References to begin.</div>';
+    return;
+  }
+
+  // Merge byParent across all selected refs
+  const mergedByParent = {};
+  refs.forEach(ref => {
+    const r = D.poCheckingData.byRef[ref]; if(!r) return;
+    Object.entries(r.byParent).forEach(([pn,pd]) => {
+      if(!mergedByParent[pn]) mergedByParent[pn] = { totalQty:0, skus:new Set(), pos:[] };
+      mergedByParent[pn].totalQty += pd.totalQty;
+      pd.skus.forEach(s=>mergedByParent[pn].skus.add(s));
+      mergedByParent[pn].pos.push(...pd.pos);
+    });
+  });
+  Object.values(mergedByParent).forEach(p=>p.skus=[...p.skus]);
+
+  // Get combined ETA info
+  const allEtas = refs.map(ref=>D.poCheckingData.byRef[ref]?.expectedEta).filter(Boolean).sort();
+  const combinedExpectedEta = allEtas[allEtas.length-1]||'';
+
+  const period=poPeriod, days={L30:30,L45:45,L60:60,L90:90}[period], sales=D.salesData[period];
+
+  const overrideEl=document.getElementById('po-override-eta');
+  const overrideEta=overrideEl?.value||'';
+  const currentEta=overrideEta||combinedExpectedEta||'';
+  const currentEtaDate=currentEta?parseFmtDate(currentEta):null;
+
+  // Use mergedByParent instead of r.byParent
+  const r = { byParent: mergedByParent, expectedEta: combinedExpectedEta };
+
+  const parents=Object.entries(r.byParent).map(([pn,pd])=>{
+    const pm=D.parentMap[pn]; if(!pm) return null;
+    const m=calcParentMetrics(pn,period,days); if(!m) return null;
+    const whOH=(()=>{let s=0;pm.skus.forEach(sku=>{const w=D.invData[sku]?.['Ann Arbor'];if(w)s+=w.onHand;});return s;})();
+    const soDate=m.stockOut?new Date(m.stockOut):null;
+    const atRisk=currentEtaDate&&soDate&&!isNaN(soDate)&&soDate<currentEtaDate;
+    const salesQty=sales.byParent[pn]||pm.skus.reduce((s,sk)=>s+(sales.bySku[sk]||0),0);
+    return {pn,pd,pm,totalOH:m.totalOH,whOH,whDOS:m.whDOS,stockOut:m.stockOut,atRisk,salesQty};
+  }).filter(Boolean);
+
+  // Hedge Options — tracked PER PARENT NAME
+  const hedgeEtaDate=currentEtaDate||(r.expectedEta?new Date(r.expectedEta):null);
+  const hedgeByParent={};  // pn → {totalQty, rows:[{po,qty,status,exf,eta,mode}]}
+  const hedgePOs={};       // po → {po,qty,status,exf,eta,mode,parents:Set}
+  if(hedgeEtaDate&&D.poData){
+    parents.forEach(({pn,pm})=>{
+      pm.skus.forEach(sku=>{
+        if(!D.poData[sku]) return;
+        D.poData[sku].pos.forEach(p=>{
+          if(!p.po||refs.includes(p.ref)) return;
+          const etaD=p.eta?new Date(p.eta):null;
+          if(!etaD||isNaN(etaD)||etaD>=hedgeEtaDate) return;
+          // Per parent tracking
+          if(!hedgeByParent[pn]) hedgeByParent[pn]={totalQty:0,rows:[]};
+          hedgeByParent[pn].totalQty+=p.qty;
+          hedgeByParent[pn].rows.push({po:p.po,qty:p.qty,status:p.status||'',exf:p.exf,eta:p.eta,mode:p.mode||''});
+          // Global PO tracking with parent names
+          if(!hedgePOs[p.po]) hedgePOs[p.po]={po:p.po,qty:0,status:p.status||'',exf:p.exf,eta:p.eta,mode:p.mode||'',parents:new Set(),perParent:{}};
+          hedgePOs[p.po].qty+=p.qty;
+          hedgePOs[p.po].parents.add(pn);
+          // Track per-parent qty (each parent only gets its own SKUs' qty)
+          hedgePOs[p.po].perParent[pn]=(hedgePOs[p.po].perParent[pn]||0)+p.qty;
+        });
+      });
+    });
+  }
+  const hedgeList=Object.values(hedgePOs).sort((a,b)=>(a.eta||'').localeCompare(b.eta||''));
+  const totalToHedge=hedgeList.reduce((s,h)=>s+h.qty,0);
+
+  // Other Incoming POs — tracked PER PARENT NAME
+  const otherByParent={};  // pn → {rows:[]}
+  const otherPOs={};       // po → {po,qty,status,exf,eta,mode,parents:Set}
+  parents.forEach(({pn,pm})=>{
+    pm.skus.forEach(sku=>{
+      if(!D.poData[sku]) return;
+      D.poData[sku].pos.forEach(p=>{
+        if(!p.po||hedgePOs[p.po]||refs.includes(p.ref)) return;
+        if(!otherByParent[pn]) otherByParent[pn]={rows:[]};
+        otherByParent[pn].rows.push({po:p.po,qty:p.qty,status:p.status||'',exf:p.exf,eta:p.eta,mode:p.mode||''});
+        if(!otherPOs[p.po]) otherPOs[p.po]={po:p.po,qty:0,status:p.status||'',exf:p.exf,eta:p.eta,bpEta:p.bpEta||p.eta,mode:p.mode||'',parents:new Set(),perParent:{}};
+        otherPOs[p.po].qty+=p.qty;
+        otherPOs[p.po].parents.add(pn);
+        otherPOs[p.po].perParent[pn]=(otherPOs[p.po].perParent[pn]||0)+p.qty;
+      });
+    });
+  });
+  const otherList=Object.values(otherPOs).sort((a,b)=>(a.eta||'').localeCompare(b.eta||''));
+
+  let html=`<div class="card">
+    <div class="card-hdr">PO Refs: ${refs.map(r=>x(r)).join(', ')}
+      &nbsp;|&nbsp; Expected ETA: ${x(currentEta||'—')}
+      ${overrideEta?`&nbsp;|&nbsp; <span style="color:#ffd700;font-weight:700">Override ETA: ${x(overrideEta)}</span>`:''}
+      <span class="tag">${parents.length} parent(s) · ${period}</span>
+    </div>
+    <div class="tw"><table>
+    <thead><tr>
+      <th class="L freeze" style="min-width:220px;left:0">Parent Name</th>
+      <th>PO Qty</th><th>Total OH</th><th>WH OH</th>
+      <th>WH DOS</th><th>WH Stock Out</th>
+      <th>${x(period)} Sales</th>
+      <th style="background:#2d3f6e">30D Proj. Sales<br/><small style="font-weight:400;font-size:10px">click to edit</small></th>
+      <th style="background:#1a3a5c">Hedge Qty</th>
+      <th style="background:#0f2440">Stock Out After Hedge</th>
+      <th style="background:#3d1f00;min-width:160px">Remarks</th>
+    </tr></thead><tbody>`;
+
+  parents.forEach(({pn,pd,whDOS,whOH,totalOH,stockOut,atRisk,salesQty})=>{
+    const dosTxt=whDOS!=null?whDOS.toFixed(1):'—';
+    const dosCl=whDOS!=null?(whDOS<14?'b-red':'b-amber'):'b-grey';
+    const pnHedgeQty=hedgeByParent[pn]?.totalQty||0;
+    const rowBg=atRisk?'style="background:#ffe0e0"':'';
+    html+=`<tr ${rowBg} data-pn="${x(pn)}">
+      <td class="L freeze" style="left:0">${x(pn)}${atRisk?' <span class="badge b-red">⚠ At Risk</span>':''}</td>
+      <td class="num">${nn(pd.totalQty)}</td>
+      <td class="num">${nn(totalOH)}</td>
+      <td class="num">${nn(whOH)}</td>
+      <td><span class="badge ${dosCl}">${dosTxt}</span></td>
+      <td class="sm">${x(stockOut)||'—'}</td>
+      <td class="num">${nn(salesQty)}</td>
+      <td class="num" id="proj-${x(pn).replace(/[^a-z0-9]/gi,'_')}" contenteditable="true"
+          style="background:#f0f4ff;cursor:text;min-width:90px"
+          data-sales="${salesQty}" data-wh-oh="${whOH}" data-dos="${whDOS!=null?whDOS:''}" data-days="${days}"
+          oninput="recomputeRow(this,this.closest('tr'),D.dateUpdated)" title="Enter 30-day projected sales"></td>
+      <td class="num" style="background:#e3eeff">${pnHedgeQty>0?nn(pnHedgeQty):'<span class=\"muted\">—</span>'}</td>
+      <td class="sm" id="soah-${x(pn).replace(/[^a-z0-9]/gi,'_')}">—</td>
+      <td class="sm" id="rmk-${x(pn).replace(/[^a-z0-9]/gi,'_')}"></td>
+    </tr>`;
+  });
+  html+='</tbody></table></div></div>';
+
+  // Hedge Options table — with Parent Name column
+  if(hedgeList.length){
+    html+=`<div class="card" id="hedge-card">
+      <div class="card-hdr">🛡 Hedge Options — Landing Before ${x(currentEta||'ETA')}
+        <span class="tag" id="hedge-total-tag">Total: ${totalToHedge.toLocaleString()} units</span>
+        <span style="font-size:11px;opacity:.75;margin-left:8px">☑ Check rows to include in Hedge total</span>
+      </div>
+      <div class="tw"><table id="hedge-table"><thead><tr>
+        <th style="min-width:36px"><input type="checkbox" id="hedge-all" onchange="toggleAllHedge(this)" title="Select all"/></th>
+        <th class="L freeze" style="min-width:120px;left:0">PO</th>
+        <th class="L" style="min-width:200px">Parent Name(s)</th>
+        <th>Status</th><th>Qty</th><th>EXF Date</th><th>Est. ETA</th><th>BP ETA</th><th>Mode</th>
+      </tr></thead><tbody>`;
+    hedgeList.forEach(h=>{
+      const parentNames=[...h.parents].join(', ');
+      const parentsEncoded=encodeURIComponent(JSON.stringify([...h.parents]));
+      const perParentEncoded=encodeURIComponent(JSON.stringify(h.perParent||{}));
+      html+=`<tr>
+        <td style="text-align:center">
+          <input type="checkbox" class="hedge-cb" checked
+            data-qty="${h.qty}" data-parents="${parentsEncoded}"
+            data-per-parent="${perParentEncoded}"
+            onchange="updateHedgeTotals()"/>
+        </td>
+        <td class="L freeze" style="left:0;font-weight:700">${x(h.po)}</td>
+        <td class="L sm" style="white-space:normal;max-width:220px">${x(parentNames)}</td>
+        <td class="L sm muted">${x(h.status)||'—'}</td>
+        <td class="num hedge-qty">${nn(h.qty)}</td>
+        <td class="sm">${x(h.exf)||'—'}</td>
+        <td class="sm">${x(h.eta)||'—'}</td>
+        <td class="sm">${x(h.bpEta||h.eta)||'—'}</td>
+        <td class="sm">${x(h.mode)||'—'}</td>
+      </tr>`;
+    });
+    html+='</tbody></table></div></div>';
+  }
+
+  // Other Incoming POs — with Parent Name column
+  if(otherList.length){
+    html+=`<div class="card"><div class="card-hdr">📦 Other Incoming POs
+      <span style="font-size:11px;opacity:.75;margin-left:8px">☐ Check to include in Hedge total</span>
+    </div>
+    <div class="tw"><table><thead><tr>
+      <th style="min-width:36px"></th>
+      <th class="L freeze" style="min-width:120px;left:0">PO</th>
+      <th class="L" style="min-width:200px">Parent Name(s)</th>
+      <th>Status</th><th>Qty</th><th>EXF Date</th><th>Est. ETA</th><th>BP ETA</th><th>Mode</th>
+    </tr></thead><tbody>`;
+    otherList.forEach(h=>{
+      const parentNames=[...h.parents].join(', ');
+      const parentsEncoded=encodeURIComponent(JSON.stringify([...h.parents]));
+      const perParentEncoded=encodeURIComponent(JSON.stringify(h.perParent||{}));
+      html+=`<tr>
+        <td style="text-align:center">
+          <input type="checkbox" class="hedge-cb" data-qty="${h.qty}"
+            data-parents="${parentsEncoded}" data-per-parent="${perParentEncoded}"
+            onchange="updateHedgeTotals()"/>
+        </td>
+        <td class="L freeze" style="left:0;font-weight:700">${x(h.po)}</td>
+        <td class="L sm" style="white-space:normal;max-width:220px">${x(parentNames)}</td>
+        <td class="L sm muted">${x(h.status)||'—'}</td>
+        <td class="num">${nn(h.qty)}</td>
+        <td class="sm">${x(h.exf)||'—'}</td>
+        <td class="sm">${x(h.eta)||'—'}</td>
+        <td class="sm">${x(h.bpEta||h.eta)||'—'}</td>
+        <td class="sm">${x(h.mode)||'—'}</td>
+      </tr>`;
+    });
+    html+='</tbody></table></div></div>';
+  }
+
+  document.getElementById('po-body').innerHTML=html;
+  // Initial hedge totals + remarks after DOM renders
+  const _capturedEtaDate = currentEtaDate; // capture in closure
+  setTimeout(()=>{ updateHedgeTotals(); }, 100);
+  setTimeout(()=>{ computePoRemarks(_capturedEtaDate); }, 300);
+}
+
+
+function recomputeRow(cell, row, dateUpd) {
+  // Recompute WH DOS, Stock Out, and Stock Out After Hedge from 30D projected sales
+  const projSales30 = parseFloat(cell.innerText.replace(/,/g,''))||0;
+  const cells = row.querySelectorAll('td');
+  // col 3=WH OH, 4=WH DOS, 5=WH Stock Out, 6=period sales, 7=proj sales, 8=hedge qty, 9=stock out after hedge
+  const whOH = parseFloat(cells[3]?.innerText?.replace(/,/g,'')||'0')||0;
+  const daily30 = projSales30 / 30;
+  const newDOS = daily30 > 0 ? (whOH / daily30).toFixed(1) : '—';
+
+  if(cells[4]) cells[4].innerHTML = `<span class="badge ${parseFloat(newDOS)<14?'b-red':parseFloat(newDOS)<=30?'b-amber':'b-grey'}">${newDOS}</span>`;
+  let soDate = null;
+  if(cells[5] && newDOS !== '—' && dateUpd) {
+    try {
+      const d = new Date(dateUpd);
+      d.setDate(d.getDate() + Math.round(parseFloat(newDOS)));
+      soDate = d;
+      cells[5].textContent = fd(d);
+    } catch(e) {}
+  }
+
+  // Recompute Stock Out After Hedge
+  const hedgeQty = parseFloat(cells[8]?.innerText?.replace(/,/g,'')||'0')||0;
+  if(cells[9] && soDate && hedgeQty > 0 && daily30 > 0) {
+    const extraDays = Math.round(hedgeQty / daily30);
+    const newSoDate = new Date(soDate);
+    newSoDate.setDate(newSoDate.getDate() + extraDays);
+    cells[9].textContent = fd(newSoDate);
+  }
+}
+
+// Called after hedge list renders to fill in hedge qty + stock out after hedge per parent
+function toggleAllHedge(masterCb) {
+  document.querySelectorAll('.hedge-cb').forEach(cb => cb.checked = masterCb.checked);
+  updateHedgeTotals();
+}
+
+function getPoEtaDate() {
+  const etaInput = document.getElementById('po-override-eta');
+  const refSel   = document.getElementById('po-ref-sel');
+  const refs     = refSel ? [...refSel.selectedOptions].map(o=>o.value).filter(Boolean) : [];
+  const ovEta    = etaInput?.value || '';
+  if(ovEta) return parseFmtDate(ovEta);
+  if(refs.length && D?.poCheckingData) {
+    const etas = refs.map(r=>D.poCheckingData.byRef[r]?.expectedEta).filter(Boolean).sort();
+    if(etas.length) return parseFmtDate(etas[etas.length-1]);
+  }
+  return null;
+}
+
+function updateHedgeTotals() {
+  if(!D) return;
+  const cbs = [...document.querySelectorAll('.hedge-cb')];
+
+  // Recalculate total and per-parent from checked rows
+  let total = 0;
+  const perParent = {}; // exact pn string → qty
+  cbs.forEach(cb => {
+    if(!cb.checked) return;
+    const qty = parseInt(cb.dataset.qty)||0;
+    total += qty;
+    try {
+      // Use per-parent quantities (each parent gets only its own SKUs' qty)
+      const perParentMap = JSON.parse(decodeURIComponent(cb.dataset.perParent||'{}'));
+      if(Object.keys(perParentMap).length > 0) {
+        Object.entries(perParentMap).forEach(([pn, pnQty]) => {
+          perParent[pn] = (perParent[pn]||0) + (Number(pnQty)||0);
+        });
+      } else {
+        // Fallback: split equally if no per-parent data
+        const parents = JSON.parse(decodeURIComponent(cb.dataset.parents));
+        parents.forEach(pn => { perParent[pn] = (perParent[pn]||0) + qty; });
+      }
+    } catch(e) {}
+  });
+
+  // Update header total
+  const tag = document.getElementById('hedge-total-tag');
+  if(tag) tag.textContent = `Total: ${total.toLocaleString()} units`;
+
+  // Update master checkbox indeterminate state
+  const all = document.getElementById('hedge-all');
+  if(all) {
+    const checked = cbs.filter(c=>c.checked).length;
+    all.indeterminate = checked > 0 && checked < cbs.length;
+    all.checked = checked === cbs.length;
+  }
+
+  // Update per-parent rows using data-pn attribute (exact match, no safe-ID guessing)
+  const dateUpd = D.dateUpdated;
+  document.querySelectorAll('#po-body tr[data-pn]').forEach(row => {
+    const pn = row.dataset.pn;
+    const cells = row.querySelectorAll('td');
+    // cells: 0=name,1=poQty,2=totalOH,3=whOH,4=dos,5=stockOut,6=sales,7=proj,8=hedgeQty,9=soah
+    const pnHedgeQty = perParent[pn] || 0;
+
+    // Update Hedge Qty cell
+    if(cells[8]) cells[8].innerHTML = pnHedgeQty > 0
+      ? pnHedgeQty.toLocaleString()
+      : '<span class="muted">—</span>';
+
+    // Recompute Stock Out After Hedge
+    // If 30D proj cell is empty → fallback to period sales (L30/L45/L60/L90)
+    if(cells[9]) {
+      const projCell = cells[7];
+      const entered  = parseFloat(projCell?.innerText?.replace(/,/g,'')||'0')||0;
+      const fallback = parseFloat(projCell?.dataset?.sales||'0')||0;
+      // Period days stored in data-days; entered proj is always 30D
+      const periodDays = parseInt(projCell?.dataset?.days||'30')||30;
+      const salesVal  = entered > 0 ? entered : fallback;
+      const divDays   = entered > 0 ? 30 : periodDays; // user-entered = 30D; fallback = period days
+      const dos = parseFloat(projCell?.dataset?.dos||'');
+      if(pnHedgeQty <= 0) {
+        cells[9].textContent = cells[5]?.textContent?.trim() || '—'; // fallback to WH Stock Out
+      } else if(salesVal > 0 && !isNaN(dos) && dos > 0) {
+        const dailyRate = salesVal / divDays;
+        const extraDays = Math.round(pnHedgeQty / dailyRate);
+        const d = new Date(dateUpd||Date.now());
+        d.setDate(d.getDate() + Math.round(dos) + extraDays);
+        cells[9].textContent = fd(d);
+      } else if(fallback > 0 && !isNaN(dos) && dos > 0) {
+        // DOS from period already set — show stock out + hedge
+        const dailyRate = fallback / periodDays;
+        const extraDays = Math.round(pnHedgeQty / dailyRate);
+        const d = new Date(dateUpd||Date.now());
+        d.setDate(d.getDate() + Math.round(dos) + extraDays);
+        cells[9].textContent = fd(d);
+      } else {
+        cells[9].textContent = '—';
+      }
+    }
+  });
+  // Recompute remarks whenever hedge changes
+  setTimeout(()=>computePoRemarks(getPoEtaDate()), 80);
+}
+
+function computePoRemarks(etaDate) {
+  const today = new Date();
+  const rows = document.querySelectorAll('#po-body tr[data-pn]');
+  rows.forEach(row => {
+    const cells = [...row.querySelectorAll('td')]; // convert to array for reliable indexing
+    const rmkCell = cells[10]; // Remarks is cells[10]
+    if(!rmkCell) return;
+
+    const soCell   = cells.find((c,i) => i===5); // WH Stock Out
+    const soText   = soCell?.textContent?.trim() || '';
+    const soahCell = cells.find((c,i) => i===9); // Stock Out After Hedge
+    const soahText = soahCell?.textContent?.trim() || '';
+    const soDate   = parseFmtDate(soText);
+    const soahDate = parseFmtDate(soahText);
+
+    let remark = '', badge = '';
+
+    // Check WH DOS (cells[4]) and Sales (cells[6])
+    const dosText   = cells[4]?.textContent?.replace(/[^0-9.]/g,'').trim();
+    const salesText = cells[6]?.textContent?.replace(/[^0-9]/g,'').trim();
+    const dos       = dosText   ? parseFloat(dosText)   : null;
+    const hasSales  = salesText ? parseInt(salesText) > 0 : false;
+
+    if(dos !== null && dos <= 0 && hasSales) {
+      remark = '🚨 Already stocked out (DOS = 0)'; badge = 'b-red';
+    } else if(dos !== null && dos <= 0 && !hasSales) {
+      remark = '🆕 New item — not yet in stock'; badge = 'b-blue';
+    } else if(!soDate && dos !== null && dos <= 7) {
+      remark = `🚨 Critical — DOS only ${dos.toFixed(1)} days`; badge = 'b-red';
+    } else if(!soDate) {
+      remark = '✅ No stock out risk'; badge = 'b-green';
+    } else if(soDate <= today) {
+      remark = '🚨 Already stocked out'; badge = 'b-red';
+    } else if(etaDate && soDate < etaDate) {
+      // Will stock out before main PO arrives
+      const daysUntilSO = Math.round((soDate - today) / 86400000);
+      if(soahDate && soahDate >= etaDate) {
+        // Hedge extends stock past ETA — covered
+        remark = `✅ Hedge covers gap — safe until ETA`; badge = 'b-green';
+      } else if(soahDate && soahDate > soDate && soahDate < etaDate) {
+        // Hedge helps but still stocks out before ETA
+        if(daysUntilSO <= 14)
+          { remark = `🚨 Immediate — stocks out in ${daysUntilSO}d, hedge insufficient`; badge = 'b-red'; }
+        else
+          { remark = `⚠ Hedge insufficient — still stocks out before ETA`; badge = 'b-amber'; }
+      } else {
+        // No hedge or hedge doesn't help
+        if(daysUntilSO <= 14)
+          { remark = `🚨 Immediate — stocks out in ${daysUntilSO}d`; badge = 'b-red'; }
+        else
+          { remark = `⚠ Stocks out ${daysUntilSO}d before ETA — add hedge`; badge = 'b-amber'; }
+      }
+    } else if(etaDate && soDate >= etaDate) {
+      remark = '✅ OK — Stock out after ETA'; badge = 'b-green';
+    } else {
+      remark = '✅ No stock out risk'; badge = 'b-green';
+    }
+
+    rmkCell.innerHTML = `<span class="badge ${badge}" style="white-space:normal;font-size:11px;padding:4px 8px">${remark}</span>`;
+  });
+}
+
+function fillHedgePerParent(parents, hedgeList, dateUpd) {
+  const totalHedgeQty = hedgeList.reduce((s,h)=>s+h.qty,0);
+  parents.forEach(({pn, whDOS, salesQty}) => {
+    const safePn = pn.replace(/[^a-z0-9]/gi,'_');
+    const hqtyEl = document.getElementById('hqty-'+safePn);
+    const soahEl = document.getElementById('soah-'+safePn);
+    const projEl = document.getElementById('proj-'+safePn);
+    if(!hqtyEl||!soahEl) return;
+
+    hqtyEl.textContent = totalHedgeQty > 0 ? totalHedgeQty.toLocaleString() : '—';
+
+    // Compute stock out after hedge
+    const projSales30 = parseFloat(projEl?.innerText?.replace(/,/g,'')||'0')||parseFloat(projEl?.dataset?.sales||'0')||0;
+    const daily30 = projSales30 / 30;
+    const whOH = parseFloat(document.getElementById('proj-'+safePn)?.closest('tr')?.querySelectorAll('td')[3]?.innerText?.replace(/,/g,'')||'0')||0;
+    if(daily30 > 0 && whDOS != null && totalHedgeQty > 0) {
+      const extraDays = Math.round(totalHedgeQty / daily30);
+      const d = new Date(dateUpd||Date.now());
+      d.setDate(d.getDate() + Math.round(whDOS) + extraDays);
+      soahEl.textContent = fd(d);
+    } else {
+      soahEl.textContent = '—';
+    }
+  });
+}
+
+
+function downloadPo() {
+  const el=document.getElementById('po-body');
+  if(!el.innerHTML){toast('No PO data to download.');return;}
+  toExcel(prepareForExcel(el.innerHTML),'PO_Checking');
+}
+
+function downloadLowStock() {
+  const el=document.getElementById('ls-body');
+  if(!el.innerHTML){toast('No data to download.');return;}
+  toExcel(prepareForExcel(el.innerHTML),'Low_Stock');
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function sortSizes(arr) {
+  const O=['XS','S','M','L','XL','XXL','2XL','3XL','ONE SIZE','ONE-SIZE'];
+  return arr.sort((a,b)=>{
+    const na=parseFloat(a),nb=parseFloat(b);
+    if(!isNaN(na)&&!isNaN(nb)) return na-nb;
+    const ia=O.indexOf(a.toUpperCase()),ib=O.indexOf(b.toUpperCase());
+    if(ia>=0&&ib>=0) return ia-ib;
+    if(ia>=0) return 1; if(ib>=0) return -1;
+    return a.localeCompare(b);
+  });
+}
+function fd(d){
+  if(!d||isNaN(d)) return '';
+  return (d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getDate().toString().padStart(2,'0')+'/'+d.getFullYear();
+}
+// Parse MM/DD/YYYY (from fmt() in Code.gs) reliably across all browsers
+function parseFmtDate(s) {
+  if(!s || s==='—' || !s.trim()) return null;
+  const parts = s.trim().split('/');
+  if(parts.length === 3) {
+    const d = new Date(+parts[2], +parts[0]-1, +parts[1]);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // fallback for YYYY-MM-DD (date input)
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+function nn(v){
+  if(v==null||v===''||isNaN(v)) return '<span class="muted">—</span>';
+  const n=Number(v);
+  return n===0?'<span class="muted">0</span>':n.toLocaleString();
+}
+function x(s){
+  if(s==null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+// ============================================================
+// TAB: NEW PRODUCT SALES
+// ============================================================
+let npsParents = [];
+const npsState = {}; // NPS override/checkbox state persists across re-renders
+
+function initNPS() {
+  if(!D?.newProductSales?.data) {
+    console.log('initNPS: no sales data yet', D?.newProductSales);
+    return;
+  }
+  console.log('initNPS: loading', Object.keys(D.newProductSales.data).length, 'parents');
+  const nps = D.newProductSales;
+  // All parents from NPS data, sorted by product type then name
+  npsParents = Object.keys(nps.data).sort((a,b)=>{
+    const ta=nps.parentTypes[a]||'', tb=nps.parentTypes[b]||'';
+    return ta.localeCompare(tb)||a.localeCompare(b);
+  });
+  // Product Type dropdown — from col E (parentTypes)
+  const typeSet = new Set(npsParents.map(pn=>nps.parentTypes[pn]).filter(Boolean));
+  const typeSel = document.getElementById('nps-type');
+  if(typeSel){
+    typeSel.innerHTML = '<option value="">— All Types —</option>';
+    [...typeSet].sort().forEach(t=>typeSel.insertAdjacentHTML('beforeend',`<option value="${x(t)}">${x(t)}</option>`));
+  }
+  buildNpsMs(npsParents);
+
+  // Show last date captured banner
+  const lastDate = D.newProductSales.lastDate;
+  const bannerEl = document.getElementById('nps-last-date');
+  const bannerVal = document.getElementById('nps-last-date-val');
+  if(bannerEl && lastDate) {
+    // Format yyyy-mm-dd → M/D/YY
+    try {
+      const d = new Date(lastDate + 'T00:00:00');
+      bannerVal.textContent = fd(d);
+    } catch(e) { bannerVal.textContent = lastDate; }
+    bannerEl.style.display = 'block';
+  }
+}
+
+function buildNpsMs(parents) {
+  const dd = document.getElementById('nps-ms-dd'); if(!dd) return;
+  // Remember currently checked values before rebuild
+  const prevChecked = new Set([...document.querySelectorAll('.nps-ms-cb:checked')].map(c=>c.value));
+  const sh = dd.querySelector('.ms-search')?.outerHTML||'';
+  const ah = dd.querySelector('.ms-all')?.outerHTML||'';
+  dd.innerHTML = sh+ah;
+  parents.forEach(pn=>{
+    const lbl=document.createElement('label');
+    const checked = prevChecked.has(pn) ? 'checked' : '';
+    lbl.innerHTML=`<input type="checkbox" class="nps-ms-cb" value="${x(pn)}" ${checked}/> ${x(pn)}`;
+    dd.appendChild(lbl);
+  });
+  // Re-bind search input
+  const searchInput = dd.querySelector('.ms-search input');
+  if(searchInput) searchInput.oninput = e => filterNpsMs(e.target.value);
+  // Re-bind select all
+  const allCb = dd.querySelector('#nps-ms-all');
+  if(allCb) allCb.onchange = e => npsAllMs(e.target);
+  updateNpsMsLabel();
+}
+
+function onNpsTypeChange() {
+  if(!D?.newProductSales) return;
+  const type = document.getElementById('nps-type')?.value || '';
+  // Rebuild ms list — show only parents matching type
+  const filtered = npsParents.filter(pn => !type || (D.newProductSales.parentTypes[pn]||'') === type);
+  buildNpsMs(filtered);
+  // Open the dropdown so user can see filtered results
+  document.getElementById('nps-ms-dd')?.classList.add('open');
+}
+
+function filterNpsMs(q) {
+  // Only search filter — type filter is handled by rebuilding the list
+  document.querySelectorAll('#nps-ms-dd label:not(.ms-all):not(.ms-search)').forEach(lbl=>{
+    const val=lbl.querySelector('input')?.value||'';
+    lbl.style.display=!q||val.toLowerCase().includes(q.toLowerCase())?'':'none';
+  });
+}
+
+function toggleNpsMs(e){e.stopPropagation();document.getElementById('nps-ms-dd').classList.toggle('open');}
+function closeNpsMs(){document.getElementById('nps-ms-dd')?.classList.remove('open');}
+function npsAllMs(el){
+  // Only check/uncheck visible items (respects type filter)
+  const visibleCbs=[...document.querySelectorAll('.nps-ms-cb')].filter(cb=>{
+    const lbl=cb.closest('label');
+    return !lbl||lbl.style.display!=='none';
+  });
+  visibleCbs.forEach(cb=>cb.checked=el.checked);
+  updateNpsMsLabel();
+}
+
+function updateNpsMsLabel(){
+  const cbs=[...document.querySelectorAll('.nps-ms-cb')], sel=cbs.filter(c=>c.checked);
+  const btn=document.getElementById('nps-ms-btn');
+  if(btn) btn.childNodes[0].textContent=sel.length===0?'Select parents ':sel.length===cbs.length?`All (${cbs.length}) `:`${sel.length} selected `;
+  const all=document.getElementById('nps-ms-all');
+  if(all){all.indeterminate=sel.length>0&&sel.length<cbs.length;all.checked=sel.length===cbs.length&&cbs.length>0;}
+}
+function getSelectedNpsParents(){return [...document.querySelectorAll('.nps-ms-cb:checked')].map(c=>c.value);}
+
+// Get all dates (strings) for a parent+store combo
+function npsGetDates(pn, storeName){
+  const storeData = D.newProductSales.data[pn]?.[storeName]||{};
+  return Object.keys(storeData).sort(); // 'yyyy-mm-dd' sorts correctly
+}
+
+// Compute Sales Start Date = first date with positive sales (across all stores if storeName is null)
+function npsSalesStart(pn, storeName){
+  const nps = D.newProductSales.data[pn]||{};
+  const stores = storeName ? [storeName] : Object.keys(nps);
+  let earliest = null;
+  stores.forEach(s=>{
+    Object.keys(nps[s]||{}).forEach(d=>{
+      if((nps[s][d]||0)>0 && (!earliest||d<earliest)) earliest=d;
+    });
+  });
+  return earliest; // 'yyyy-mm-dd' or null
+}
+
+// Next Sales Start Date = start of the next consecutive run after the first run ends
+// A "run" ends when there's a gap >= 1 day with no sales
+function npsNextSalesStart(pn, storeName){
+  const nps = D.newProductSales.data[pn]||{};
+  const stores = storeName ? [storeName] : Object.keys(nps);
+  // Collect all unique dates with positive sales
+  const dateSet = new Set();
+  stores.forEach(s=>Object.entries(nps[s]||{}).forEach(([d,q])=>{if(q>0)dateSet.add(d);}));
+  const dates = [...dateSet].sort();
+  if(dates.length < 2) return null;
+  // Find first gap (consecutive days with no sales = end of first run)
+  for(let i=1;i<dates.length;i++){
+    const prev=new Date(dates[i-1]), curr=new Date(dates[i]);
+    const diffDays=(curr-prev)/(1000*86400);
+    if(diffDays > 1) return dates[i]; // start of next run
+  }
+  return null;
+}
+
+// Compute sales for a given parent+store within N days from captureDate
+function npsSalesForPeriod(pn, storeName, captureDate, days){
+  if(!captureDate) return 0;
+  const capD = new Date(captureDate);
+  const endD = new Date(capD.getTime() + days*86400000);
+  const storeData = D.newProductSales.data[pn]?.[storeName]||{};
+  let total=0;
+  Object.entries(storeData).forEach(([d,q])=>{
+    const dd=new Date(d);
+    if(dd>=capD && dd<endD) total+=q;
+  });
+  return total;
+}
+
+function safeId(pn, store) {
+  return (pn + '___' + store).replace(/[^a-z0-9]/gi, '_');
+}
+
+function npsCaptureDate(pn, storeName) {
+  const sid   = safeId(pn, storeName);
+  const ovEl  = document.getElementById('ov-' + sid);
+  const sdEl  = document.getElementById('sd-' + sid);
+  const ndEl  = document.getElementById('nd-' + sid);
+  const override   = ovEl?.value || '';
+  const useNext    = ndEl?.checked || false;
+  const salesStart = npsSalesStart(pn, storeName);
+  const nextStart  = npsNextSalesStart(pn, storeName);
+  if (override)              return override;
+  if (useNext && nextStart)  return nextStart;
+  return salesStart || '';
+}
+
+function npsToggleCheck(type, pn, storeName) {
+  // Mutually exclusive: checking one unchecks the other
+  const sid = safeId(pn, storeName);
+  const sdEl = document.getElementById('sd-' + sid);
+  const ndEl = document.getElementById('nd-' + sid);
+  if (type === 'sd' && sdEl?.checked) { if (ndEl) ndEl.checked = false; }
+  if (type === 'nd' && ndEl?.checked) { if (sdEl) sdEl.checked = false; }
+  npsUpdateRow(pn, storeName);
+}
+
+function npsUpdateRow(pn, storeName) {
+  const sid      = safeId(pn, storeName);
+  const capEl    = document.getElementById('cap-' + sid);
+  const cap      = npsCaptureDate(pn, storeName);
+  if (capEl) capEl.textContent = cap ? fd(new Date(cap + 'T00:00:00')) : '—';
+  // Update period sales cells
+  const PERIODS  = [7,15,30,45,60,90];
+  PERIODS.forEach(p => {
+    const cell = document.getElementById('ps-' + sid + '-' + p);
+    if (!cell) return;
+    const v = cap ? npsSalesForPeriod(pn, storeName, cap, p) : 0;
+    cell.innerHTML = v > 0 ? nn(v) : '<span class="muted">—</span>';
+  });
+  setTimeout(npsApplyRankColors, 20);
+}
+
+function saveNpsState() {
+  // Only save if NPS table is currently rendered
+  const body = document.getElementById('nps-body');
+  if(!body || !body.querySelector('[id^="ov-"]')) return;
+  document.querySelectorAll('[id^="ov-"]').forEach(el => {
+    const sid = el.id.replace('ov-', '');
+    if(!npsState[sid]) npsState[sid] = {};
+    npsState[sid].override = el.value || '';
+  });
+  document.querySelectorAll('[id^="sd-"]').forEach(el => {
+    const sid = el.id.replace('sd-', '');
+    if(!npsState[sid]) npsState[sid] = {};
+    npsState[sid].useStart = el.checked;
+  });
+  document.querySelectorAll('[id^="nd-"]').forEach(el => {
+    const sid = el.id.replace('nd-', '');
+    if(!npsState[sid]) npsState[sid] = {};
+    npsState[sid].useNext = el.checked;
+  });
+}
+
+function restoreNpsState() {
+  // Restore override dates and checkboxes after re-render
+  Object.entries(npsState).forEach(([sid, state]) => {
+    const ovEl = document.getElementById('ov-' + sid);
+    if(ovEl && state.override) { ovEl.value = state.override; }
+    const sdEl = document.getElementById('sd-' + sid);
+    if(sdEl && state.useStart !== undefined) { sdEl.checked = state.useStart; }
+    const ndEl = document.getElementById('nd-' + sid);
+    if(ndEl && state.useNext !== undefined) { ndEl.checked = state.useNext; }
+  });
+  // Recompute all Date Captured and period sales after restore
+  document.querySelectorAll('[id^="cap-"]').forEach(capEl => {
+    const sid = capEl.id.replace('cap-', '');
+    // Find pn and storeName from safeId — stored as data attributes on row
+    const row = capEl.closest('tr');
+    if(!row) return;
+    const storeCell = row.querySelector('td.freeze');
+    const storeName = storeCell?.dataset?.store || '';
+    // Find parent name by iterating selParents
+    getSelectedNpsParents().forEach(pn => {
+      if(safeId(pn, storeName) === sid) npsUpdateRow(pn, storeName);
+    });
+  });
+}
+
+
+function renderNPS() {
+  saveNpsState();
+  const body = document.getElementById('nps-body');
+  if(!D) { body.innerHTML='<div style="padding:24px;color:red;text-align:center">❌ Data not loaded.</div>'; return; }
+  if(!D.newProductSales?.data || !Object.keys(D.newProductSales.data).length) {
+    body.innerHTML='<div style="padding:24px;color:orange;text-align:center">⚠ No New Product Sales data. Run pushSalesData() then refresh.</div>';
+    return;
+  }
+  const selParents = getSelectedNpsParents();
+  if(!selParents.length) {
+    body.innerHTML='<div style="padding:24px;color:var(--muted);text-align:center">☝ Select parent names then click View.</div>';
+    return;
+  }
+
+  const PERIODS = [...document.querySelectorAll('.nps-pd:checked')].map(c=>parseInt(c.value));
+  if(!PERIODS.length) { body.innerHTML='<div style="padding:24px;color:var(--muted);text-align:center">Select at least one period above.</div>'; return; }
+  const showCfg = document.getElementById('nps-show-cfg')?.checked || false;
+  const META = showCfg ? 4 : 1;
+  const totalCols = META + PERIODS.length;
+
+  // Get stores from NPS data
+  const storeSet = new Set();
+  selParents.forEach(pn => Object.keys(D.newProductSales.data[pn]||{}).forEach(s=>storeSet.add(s)));
+  const stores = [...storeSet].sort((a,b)=>{
+    const aWH = a.toLowerCase().includes('ann arbor') && !a.toLowerCase().includes('pos');
+    const bWH = b.toLowerCase().includes('ann arbor') && !b.toLowerCase().includes('pos');
+    if(aWH) return -1; if(bWH) return 1; return a.localeCompare(b);
+  });
+
+  // preMetaMap: pn → [{storeName, capDate}] for TOTAL row
+  const preMetaMap = {};
+  selParents.forEach(pn => { preMetaMap[pn] = []; });
+
+  // Build HTML
+  let html = '<div class="card" style="flex:1"><div class="card-hdr">New Product Sales <span class="tag">' + selParents.length + ' parent(s) · ' + stores.length + ' store(s)</span></div><div class="tw"><table id="nps-table"><thead>';
+
+  // Row 1: Parent name headers
+  html += '<tr><th class="L freeze" rowspan="2" style="min-width:160px;left:0;z-index:5">Store</th>';
+  selParents.forEach(pn => {
+    html += '<th colspan="' + totalCols + '" style="background:#4a6fa5;white-space:normal;font-size:11px"><strong style="font-size:14px">' + x(pn) + '</strong><br/><span style="opacity:.75;font-size:11px">' + x(D.newProductSales.parentTypes[pn]||'') + '</span></th>';
+  });
+  html += '</tr>';
+
+  // Row 2: Sub-headers
+  html += '<tr>';
+  selParents.forEach(pn => {
+    if(showCfg) {
+      html += '<th style="min-width:175px;background:#6b8cba;font-size:11px;color:#fff">Override Date<div style="margin-top:4px;display:flex;gap:4px"><input type="date" id="nps-ov-all-' + x(pn) + '" style="font-size:10px;border:1px solid #aac;border-radius:3px;background:#fff;color:#333;padding:1px 3px;width:100px;" title="Apply to all stores"/><button onclick="npsApplyAllOverride(\'' + x(pn) + '\')" style="font-size:10px;background:#1a3a5c;color:#fff;border:none;border-radius:3px;padding:2px 6px;cursor:pointer;font-weight:700">All ↓</button></div></th>';
+      html += '<th style="min-width:95px;background:#7da3c9;font-size:11px;color:#fff">☑ Sales Start</th>';
+      html += '<th style="min-width:95px;background:#7da3c9;font-size:11px;color:#fff">☑ Next Sales</th>';
+    }
+    html += '<th style="min-width:95px;background:#5b8db8;font-size:11px;color:#fff">Date Captured</th>';
+    PERIODS.forEach(p => { html += '<th style="min-width:50px">' + p + 'D</th>'; });
+  });
+  html += '</tr></thead><tbody>';
+
+  // Store rows
+  stores.forEach(storeName => {
+    const isWH = storeName.toLowerCase().includes('ann arbor') && !storeName.toLowerCase().includes('pos');
+    const cls  = isWH ? 'g-row' : '';
+    const wh   = isWH ? ' <span class="badge b-blue">WH</span>' : '';
+    html += '<tr class="' + cls + '"><td class="L freeze" style="left:0" data-store="' + x(storeName) + '">' + x(storeName) + wh + '</td>';
+
+    selParents.forEach(pn => {
+      const sid        = safeId(pn, storeName);
+      const salesStart = npsSalesStart(pn, storeName);
+      const nextStart  = npsNextSalesStart(pn, storeName);
+      const savedOv    = npsState[sid]?.override || '';
+      const savedNext  = npsState[sid]?.useNext  || false;
+      const capDate    = savedOv || (savedNext && nextStart ? nextStart : salesStart || '');
+      const capDisp    = capDate ? fd(new Date(capDate + 'T00:00:00')) : '—';
+      preMetaMap[pn].push({storeName, capDate});
+
+      if(showCfg) {
+        html += '<td style="background:#dce8f5;padding:3px 5px"><input type="date" id="ov-' + sid + '" value="' + savedOv + '" style="font-size:11px;border:1px solid #aac;border-radius:3px;background:#fff;color:#333;padding:2px 4px;width:105px;" title="Override Date" onchange="npsUpdateRow(\'' + x(pn) + '\',\'' + x(storeName) + '\')"/></td>';
+        html += '<td style="background:#e8f0fa;padding:3px 6px;white-space:nowrap"><label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#1a3a5c"><input type="checkbox" id="sd-' + sid + '" ' + (!savedNext && salesStart ? 'checked' : '') + ' onchange="npsToggleCheck(\'sd\',\'' + x(pn) + '\',\'' + x(storeName) + '\')" />' + (salesStart ? fd(new Date(salesStart+'T00:00:00')) : '<span style="opacity:.4">No data</span>') + '</label></td>';
+        html += '<td style="background:#e8f0fa;padding:3px 6px;white-space:nowrap">' + (nextStart ? '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;color:#1a3a5c"><input type="checkbox" id="nd-' + sid + '" ' + (savedNext ? 'checked' : '') + ' onchange="npsToggleCheck(\'nd\',\'' + x(pn) + '\',\'' + x(storeName) + '\')" />' + fd(new Date(nextStart+'T00:00:00')) + '</label>' : '<span style="font-size:11px;opacity:.4;padding:0 4px">—</span>') + '</td>';
+      }
+      html += '<td id="cap-' + sid + '" style="background:#d0e4f7;font-size:12px;font-weight:600;color:#1a5276;text-align:center">' + capDisp + '</td>';
+      PERIODS.forEach(p => {
+        const v = capDate ? npsSalesForPeriod(pn, storeName, capDate, p) : 0;
+        html += '<td class="num" id="ps-' + sid + '-' + p + '">' + (v > 0 ? nn(v) : '<span class="muted">—</span>') + '</td>';
+      });
+    });
+    html += '</tr>';
+  });
+
+  // TOTAL row — sums period cells per parent
+  html += '<tr class="t-row"><td class="L freeze" style="left:0;font-weight:700">TOTAL</td>';
+  selParents.forEach(pn => {
+    const safePn = pn.replace(/[^a-z0-9]/gi,'_');
+    if(showCfg) html += '<td></td><td></td><td></td>';
+    html += '<td></td>'; // Date Captured cell — leave blank for TOTAL
+    PERIODS.forEach(p => {
+      const total = preMetaMap[pn].reduce((sum,{storeName,capDate}) => sum + (capDate ? npsSalesForPeriod(pn,storeName,capDate,p) : 0), 0);
+      html += '<td class="num" style="font-weight:700" id="tot-' + safePn + '-' + p + '">' + (total > 0 ? nn(total) : '<span class="muted">—</span>') + '</td>';
+    });
+  });
+  html += '</tr></tbody></table></div></div>';
+
+  body.innerHTML = html;
+  setTimeout(npsApplyRankColors, 80);
+}
+
+
+function npsApplyAllOverride(pn) {
+  const masterEl = document.getElementById('nps-ov-all-' + pn);
+  if(!masterEl) return;
+  const val = masterEl.value;
+  // Apply override to all store rows for this parent
+  const table = document.getElementById('nps-table');
+  if(!table) return;
+  [...table.querySelectorAll('tbody tr:not(.t-row)')].forEach(row => {
+    const storeName = row.querySelector('td.freeze')?.dataset?.store || '';
+    if(!storeName) return;
+    const sid = safeId(pn, storeName);
+    const ovEl = document.getElementById('ov-' + sid);
+    if(ovEl) {
+      ovEl.value = val;
+      npsState[sid] = npsState[sid] || {};
+      npsState[sid].override = val;
+      npsUpdateRow(pn, storeName);
+    }
+  });
+  // Update TOTAL row after all stores updated
+  setTimeout(() => updateNpsTotalRow(), 50);
+}
+
+function updateNpsTotalRow() {
+  // Sum all visible period cells per parent column
+  const table = document.getElementById('nps-table');
+  if(!table) return;
+  const PERIODS = [...document.querySelectorAll('.nps-pd:checked')].map(c=>parseInt(c.value));
+  const showCfg = document.getElementById('nps-show-cfg')?.checked || false;
+  const selParents = getSelectedNpsParents();
+  const totalRow = table.querySelector('tr.t-row');
+  if(!totalRow) return;
+
+  selParents.forEach(pn => {
+    PERIODS.forEach(p => {
+      // Sum all store cells for this parent+period
+      let total = 0;
+      const storeSet = Object.keys(D.newProductSales.data[pn]||{});
+      storeSet.forEach(storeName => {
+        const sid = safeId(pn, storeName);
+        const cell = document.getElementById('ps-' + sid + '-' + p);
+        if(cell) {
+          const v = parseInt(cell.textContent.replace(/[^0-9]/g,'')) || 0;
+          total += v;
+        }
+      });
+      // Find and update total cell
+      const totCell = totalRow.querySelector('[id="tot-' + pn.replace(/[^a-z0-9]/gi,'_') + '-' + p + '"]');
+      if(totCell) totCell.innerHTML = total > 0 ? nn(total) : '<span class="muted">—</span>';
+    });
+  });
+}
+
+function downloadNPS(){
+  const el=document.getElementById('nps-table');
+  if(!el){toast('No data to download.');return;}
+  // Apply inline styles for Excel (color coding + cell backgrounds)
+  const clone = el.cloneNode(true);
+  // Apply rank colors inline
+  const colorMap = {
+    'nps-r1':'background:#d4edda;color:#155724;',
+    'nps-r2':'background:#cce5ff;color:#004085;',
+    'nps-r3':'background:#fff9c4;color:#7d6608;',
+    'nps-r4':'background:#ffe5cc;color:#7d3c00;',
+    'nps-r5':'background:#ffd5d5;color:#7d0000;'
+  };
+  clone.querySelectorAll('td,th').forEach(cell => {
+    const existing = cell.getAttribute('style')||'';
+    Object.entries(colorMap).forEach(([cls, style]) => {
+      if(cell.classList.contains(cls)) cell.setAttribute('style', existing + style);
+    });
+    // Remove input/button elements from excel (not useful in spreadsheet)
+    cell.querySelectorAll('input,button').forEach(el => {
+      const val = el.value || el.textContent || '';
+      if(el.tagName==='INPUT' && el.type==='date' && !val) return;
+      if(el.tagName==='INPUT' && el.type==='checkbox') {
+        el.replaceWith(document.createTextNode(el.checked ? '✓' : ''));
+        return;
+      }
+      if(el.tagName==='INPUT') el.replaceWith(document.createTextNode(val));
+      if(el.tagName==='BUTTON') el.remove();
+    });
+  });
+  toExcel(prepareForExcel(clone.outerHTML),'New_Product_Sales');
+}
+
+
+function scheduleNextRefetch() {
+  const now = Date.now();
+  let next8am = getEst8amToday();
+  if (now >= next8am) next8am += 24 * 60 * 60 * 1000; // already past → tomorrow
+  const msUntil = next8am - now;
+  console.log('Auto-refetch scheduled in ' + Math.round(msUntil/60000) + ' min (8am EST)');
+  setTimeout(async () => {
+    console.log('Auto-refetching data at 8am EST...');
+    sessionStorage.removeItem('sl_data_cache');
+    sessionStorage.removeItem('sl_data_cache_at');
+    try {
+      const res = await fetch(DATA_URL + '?t=' + Date.now());
+      if (!res.ok) throw new Error('fetch failed');
+      D = await res.json();
+      try {
+        sessionStorage.setItem('sl_data_cache', JSON.stringify(D));
+        sessionStorage.setItem('sl_data_cache_at', String(Date.now()));
+      } catch(e) {}
+      renderWhse(); renderZero(); renderLowStock(); populatePoRefs();
+      toast('Data refreshed automatically ✓');
+    } catch(e) { console.warn('Auto-refetch failed:', e); }
+    scheduleNextRefetch(); // schedule next day
+  }, msUntil);
+}
+
+function toast(msg,isErr){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.style.background=isErr?'#b91c1c':'#1e2533';
+  el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),4000);
+}
+
+loadData();
+</script>
+</body>
+</html>
